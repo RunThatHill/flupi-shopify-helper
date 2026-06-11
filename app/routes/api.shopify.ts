@@ -46,7 +46,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const session = await db.session.findFirst({
       where: { shop },
     });
-    if (!session) {
+
+    // Fallback: use env var access token if no DB session exists (Railway production)
+    const accessToken = session?.accessToken ?? process.env.SHOPIFY_ACCESS_TOKEN ?? ""
+    const resolvedShop = session?.shop ?? process.env.SHOPIFY_SHOP ?? shop
+
+    if (!accessToken) {
       return json(
         { errors: [{ message: `No active Shopify session found for shop: ${shop}` }] },
         { status: 404, headers: corsHeaders }
@@ -55,12 +60,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     // 3. Helper to execute GraphQL queries directly via fetch using the stored access token
     const executeShopifyGraphQL = async (gqlQuery: string, gqlVariables: any = {}) => {
-      const endpoint = `https://${shop}/admin/api/2026-04/graphql.json`;
+      const endpoint = `https://${resolvedShop}/admin/api/2026-04/graphql.json`;
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Shopify-Access-Token": session.accessToken,
+          "X-Shopify-Access-Token": accessToken,
         },
         body: JSON.stringify({ query: gqlQuery, variables: gqlVariables }),
       });

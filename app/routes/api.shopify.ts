@@ -51,9 +51,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const accessToken = session?.accessToken ?? process.env.SHOPIFY_ACCESS_TOKEN ?? ""
     const resolvedShop = session?.shop ?? process.env.SHOPIFY_SHOP ?? shop
 
-    if (session) {
-      console.log(`[Shopify Session Info] Shop: ${resolvedShop}, Token: ${session.accessToken}`);
-    }
+
 
     if (!accessToken) {
       return json(

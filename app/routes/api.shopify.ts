@@ -97,6 +97,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         }`
       );
       const resJson = await response.json();
+      if (resJson.errors && resJson.errors.length > 0) {
+        console.error("Shopify GraphQL Errors (GetShopifyCustomers):", resJson.errors);
+        return json(
+          { errors: resJson.errors },
+          { status: 400, headers: corsHeaders }
+        );
+      }
       const shopifyCustomers = resJson.data?.customers?.edges || [];
 
       // Fetch all customer notes from our SQLite database via Prisma
@@ -220,6 +227,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         }`
       );
       const resJson = await response.json();
+      if (resJson.errors && resJson.errors.length > 0) {
+        console.error("Shopify GraphQL Errors (GetShopifyOrders):", resJson.errors);
+        return json(
+          { errors: resJson.errors },
+          { status: 400, headers: corsHeaders }
+        );
+      }
       const shopifyOrders = resJson.data?.orders?.edges || [];
 
       // Fetch all order notes from SQLite database via Prisma

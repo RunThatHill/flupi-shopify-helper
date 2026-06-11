@@ -47,13 +47,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       where: { shop },
     });
 
-    if (session) {
-      console.log(`[Shopify Session Info] Shop: ${resolvedShop}, Token: ${session.accessToken}`);
-    }
-
     // Fallback: use env var access token if no DB session exists (Railway production)
     const accessToken = session?.accessToken ?? process.env.SHOPIFY_ACCESS_TOKEN ?? ""
     const resolvedShop = session?.shop ?? process.env.SHOPIFY_SHOP ?? shop
+
+    if (session) {
+      console.log(`[Shopify Session Info] Shop: ${resolvedShop}, Token: ${session.accessToken}`);
+    }
 
     if (!accessToken) {
       return json(

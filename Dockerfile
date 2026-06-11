@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package.json ./
 
 # Install ALL deps (including dev) — needed for Remix build
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # Copy rest of source
 COPY . .

@@ -1,25 +1,22 @@
 FROM node:20-alpine
 RUN apk add --no-cache openssl
 
-EXPOSE 3000
-
 WORKDIR /app
 
-ENV NODE_ENV=production
-
-# Copy package manifest
+# Copy package manifest only first (better layer caching)
 COPY package.json ./
 
-# Install dependencies (no lockfile required)
-RUN npm install --omit=dev && npm cache clean --force
+# Install ALL deps (including dev) — needed for Remix build
+RUN npm install
 
-# Remove CLI packages not needed in production
-RUN npm remove @shopify/cli --ignore-scripts || true
-
-# Copy the rest of the app
+# Copy rest of source
 COPY . .
 
-# Generate Prisma client & build Remix
+# Build the Remix app
+RUN npx prisma generate
 RUN npm run build
 
-CMD ["npm", "run", "docker-start"]
+ENV NODE_ENV=production
+EXPOSE 3000
+
+CMD ["npm", "run", "start"]

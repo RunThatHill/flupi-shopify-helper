@@ -122,22 +122,30 @@ app.post('/send-request', async (req, res) => {
     return res.status(400).json({ error: 'Missing phone' });
   }
 
-  const jid = `${phone}@s.whatsapp.net`;
-  const message = `Hi ${name},\n\nThank you for your order ${orderNumber}! You selected Instapay checkout. Please reply to this chat with a screenshot of your payment transfer of ${amount} ${currency} to confirm and verify your order.`;
-
   try {
     if (!sock) {
       throw new Error('WhatsApp client is not connected');
     }
-    const sentMsg = await sock.sendMessage(jid, { text: message });
-    console.log(`[WA-Bot] Sent payment request message to ${phone} for order ${orderNumber}`);
+
+    // Resolve the canonical JID (LID) using onWhatsApp query
+    let targetJid = `${phone}@s.whatsapp.net`;
+    const waExists = await sock.onWhatsApp(phone);
+    console.log(`[WA-Bot] onWhatsApp result for ${phone}:`, JSON.stringify(waExists));
+
+    if (waExists && waExists.length > 0) {
+      targetJid = waExists[0].jid;
+      console.log(`[WA-Bot] Resolved phone ${phone} to canonical JID: ${targetJid}`);
+    }
+
+    const message = `Hi ${name},\n\nThank you for your order ${orderNumber}! You selected Instapay checkout. Please reply to this chat with a screenshot of your payment transfer of ${amount} ${currency} to confirm and verify your order.`;
+
+    const sentMsg = await sock.sendMessage(targetJid, { text: message });
+    console.log(`[WA-Bot] Sent payment request message to ${targetJid} for order ${orderNumber}`);
     
-    // Check if JID resolved to a LID (Linked Identity)
-    const resolvedJid = sentMsg?.key?.remoteJid || jid;
-    const resolvedPhone = resolvedJid.split('@')[0];
+    const resolvedPhone = targetJid.split('@')[0];
 
     if (resolvedPhone !== phone && shopifyOrderId) {
-      console.log(`[WA-Bot] Phone ${phone} resolved to JID/LID: ${resolvedPhone}. Updating helper...`);
+      console.log(`[WA-Bot] Updating helper with resolved LID: ${resolvedPhone}`);
       fetch(`${HELPER_URL}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

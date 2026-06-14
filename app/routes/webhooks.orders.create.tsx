@@ -3,9 +3,10 @@ import { authenticate } from "../shopify.server";
 import db from "../db.server";
 
 export const action = async ({ request }: ActionFunctionArgs) => {
+  console.log("[DEBUG] Webhook request received at /webhooks/orders/create");
   try {
     const { payload, topic, shop } = await authenticate.webhook(request);
-    console.log(`Received ${topic} webhook for ${shop}`);
+    console.log(`[DEBUG] Webhook authenticated successfully: ${topic} for ${shop}`);
 
     // Check payment gateway (case insensitive check for "instapay")
     const gatewayNames: string[] = payload.payment_gateway_names || [];

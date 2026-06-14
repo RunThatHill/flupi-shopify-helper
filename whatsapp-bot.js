@@ -61,7 +61,6 @@ async function connectToWhatsApp() {
     const msg = m.messages[0];
     if (!msg.key.fromMe && m.type === 'notify') {
       const from = msg.key.remoteJid;
-      const phone = from.split('@')[0];
       const messageType = Object.keys(msg.message || {})[0];
       const isImage = messageType === 'imageMessage';
 
@@ -70,6 +69,14 @@ async function connectToWhatsApp() {
         console.log('[DEBUG] Full message object:', JSON.stringify(msg));
 
         try {
+          // Resolve phone number from remoteJidAlt if available (LID to JID fallback)
+          let phone = from.split('@')[0];
+          const altJid = msg.key.remoteJidAlt;
+          if (altJid && altJid.endsWith('@s.whatsapp.net')) {
+            phone = altJid.split('@')[0];
+            console.log(`[WA-Bot] Resolved LID JID ${from} to alternate phone JID: ${phone}`);
+          }
+
           // Download the image buffer
           const buffer = await downloadMediaMessage(
             msg,

@@ -1,6 +1,7 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import db from "../db.server";
+import shopify from "../shopify.server";
 import fs from "fs/promises";
 import path from "path";
 
@@ -124,27 +125,24 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         return json({ error: "Order not found in queue" }, { status: 404, headers: corsHeaders });
       }
 
-      // Get Shopify access credentials (fall back to env vars if needed)
-      // Usually, session has the access token
+      // Get Shopify session/shop
       const session = await db.session.findFirst();
-      const accessToken = session?.accessToken ?? process.env.SHOPIFY_ACCESS_TOKEN ?? "";
       const shop = session?.shop ?? process.env.SHOPIFY_SHOP ?? "";
 
-      if (!accessToken || !shop) {
-        return json({ error: "Shopify credentials not found" }, { status: 500, headers: corsHeaders });
+      if (!shop) {
+        return json({ error: "Shopify shop credentials not found" }, { status: 500, headers: corsHeaders });
       }
+
+      // Instantiate Shopify admin client
+      const { admin } = await shopify.unauthenticated.admin(shop);
 
       // Execute Shopify GraphQL mutation to mark order as paid
       const gqlQuery = `#graphql
-        mutation orderPaymentCreate($orderId: ID!, $transaction: OrderPaymentCreateInput!) {
-          orderPaymentCreate(orderId: $orderId, transaction: $transaction) {
+        mutation orderMarkAsPaid($input: OrderMarkAsPaidInput!) {
+          orderMarkAsPaid(input: $input) {
             order {
               id
               displayFinancialStatus
-            }
-            transaction {
-              id
-              status
             }
             userErrors {
               field
@@ -156,34 +154,22 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
       const orderGid = shopifyOrderId.startsWith("gid://") ? shopifyOrderId : `gid://shopify/Order/${shopifyOrderId}`;
       const gqlVariables = {
-        orderId: orderGid,
-        transaction: {
-          amount: String(order.totalPrice),
-          gateway: "Instapay",
-          status: "SUCCESS",
+        input: {
+          id: orderGid,
         },
       };
 
-      const shopifyEndpoint = `https://${shop}/admin/api/2026-04/graphql.json`;
-      console.log(`Sending orderPaymentCreate mutation to Shopify for order: ${orderGid}`);
+      console.log(`Sending orderMarkAsPaid mutation to Shopify for order: ${orderGid}`);
       
-      const response = await fetch(shopifyEndpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shopify-Access-Token": accessToken,
-        },
-        body: JSON.stringify({ query: gqlQuery, variables: gqlVariables }),
-      });
-
+      const response = await admin.graphql(gqlQuery, { variables: gqlVariables });
       const resJson = await response.json();
-      console.log("Shopify response for payment create:", JSON.stringify(resJson));
+      console.log("Shopify response for mark as paid:", JSON.stringify(resJson));
 
       if (resJson.errors && resJson.errors.length > 0) {
         return json({ error: "Shopify GraphQL error", details: resJson.errors }, { status: 400, headers: corsHeaders });
       }
 
-      const mutationResult = resJson.data?.orderPaymentCreate;
+      const mutationResult = resJson.data?.orderMarkAsPaid;
       if (mutationResult?.userErrors && mutationResult.userErrors.length > 0) {
         return json({ error: "Shopify user error", details: mutationResult.userErrors }, { status: 400, headers: corsHeaders });
       }

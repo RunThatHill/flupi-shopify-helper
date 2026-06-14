@@ -107,7 +107,7 @@ async function connectToWhatsApp() {
           if (response.ok) {
             console.log(`[WA-Bot] Screenshot successfully processed for ${phone}`);
             await sock.sendMessage(from, { 
-              text: 'Thank you! We have received your payment screenshot. Our team will verify it shortly and confirm your order. Please note that verification can take up to 2 hours.' 
+              text: 'Thank you! We have received your payment screenshot. Our team will verify it shortly and confirm your order. Please note that verification can take up to 2 hours.\n\nشكراً لك! لقد استلمنا لقطة شاشة الدفع الخاصة بك. سيقوم فريقنا بالتحقق منها قريباً وتأكيد طلبك. يرجى ملاحظة أن عملية التحقق قد تستغرق ما يصل إلى ساعتين.' 
             });
           } else {
             console.warn(`[WA-Bot] Proof upload rejected by helper: ${resJson.error}`);
@@ -144,7 +144,8 @@ app.post('/send-request', async (req, res) => {
       console.log(`[WA-Bot] Resolved phone ${phone} to canonical JID: ${targetJid}`);
     }
 
-    const message = `Hi ${name},\n\nThank you for your order ${orderNumber}! You selected Instapay checkout. Please reply to this chat with a screenshot of your payment transfer of ${amount} ${currency} to confirm and verify your order.`;
+    const firstName = name ? name.trim().split(/\s+/)[0] : 'Customer';
+    const message = `Hi ${firstName},\n\nThank you for your order ${orderNumber}! You selected Instapay checkout. Please reply to this chat with a screenshot of your payment transfer of ${amount} ${currency === 'EGP' ? 'EGP' : currency} to confirm and verify your order.\n\nشكراً على طلبك ${orderNumber}! لقد اخترت الدفع الفوري Instapay. من فضلك رد على هذه المحادثة بصورة من تحويلك لمبلغ ${amount} ${currency === 'EGP' ? 'جنيه مصري' : currency} لتأكيد والتحقق من طلبك.`;
 
     const sentMsg = await sock.sendMessage(targetJid, { text: message });
     console.log(`[WA-Bot] Sent payment request message to ${targetJid} for order ${orderNumber}`);
@@ -181,7 +182,7 @@ app.post('/send-success', async (req, res) => {
   }
 
   const jid = `${phone}@s.whatsapp.net`;
-  const message = `Payment Verified! ✅\n\nYour payment for order ${orderNumber} has been verified and your order is now confirmed. Thank you for shopping with us!`;
+  const message = `Payment Verified! ✅\n\nYour payment for order ${orderNumber} has been verified and your order is now confirmed. Thank you for shopping with us!\n\nتم التحقق من الدفع! ✅\n\nتم التحقق من دفعتك للطلب ${orderNumber} وتأكيد طلبك الآن. شكراً لتسوقك معنا!`;
 
   try {
     if (!sock) {

@@ -133,9 +133,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         return json({ error: "Shopify shop credentials not found" }, { status: 500, headers: corsHeaders });
       }
 
-      // Instantiate Shopify admin client
-      const { admin } = await shopify.unauthenticated.admin(shop);
-
       // Execute Shopify GraphQL mutation to mark order as paid
       const gqlQuery = `#graphql
         mutation orderMarkAsPaid($input: OrderMarkAsPaidInput!) {
@@ -161,8 +158,35 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
       console.log(`Sending orderMarkAsPaid mutation to Shopify for order: ${orderGid}`);
       
-      const response = await admin.graphql(gqlQuery, { variables: gqlVariables });
-      const resJson = await response.json();
+      let resJson;
+      if (session?.accessToken) {
+        try {
+          const { admin } = await shopify.unauthenticated.admin(shop);
+          const response = await admin.graphql(gqlQuery, { variables: gqlVariables });
+          resJson = await response.json();
+        } catch (e: any) {
+          console.warn(`Admin client authentication failed, falling back to manual fetch:`, e.message);
+        }
+      }
+
+      if (!resJson) {
+        // Fallback to manual fetch using env vars
+        const accessToken = session?.accessToken ?? process.env.SHOPIFY_ACCESS_TOKEN ?? "";
+        if (!accessToken) {
+          return json({ error: "No Shopify access token found (session is empty and env var is missing)" }, { status: 500, headers: corsHeaders });
+        }
+        const shopifyEndpoint = `https://${shop}/admin/api/2025-01/graphql.json`;
+        console.log(`Using fallback manual fetch for order confirmation at: ${shopifyEndpoint}`);
+        const response = await fetch(shopifyEndpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": accessToken,
+          },
+          body: JSON.stringify({ query: gqlQuery, variables: gqlVariables }),
+        });
+        resJson = await response.json();
+      }
       console.log("Shopify response for mark as paid:", JSON.stringify(resJson));
 
       if (resJson.errors && resJson.errors.length > 0) {

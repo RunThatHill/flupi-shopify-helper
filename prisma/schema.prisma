@@ -55,3 +55,18 @@ model OrderNote {
   createdAt       DateTime @default(now())
 }
 
+model InstapayOrderQueue {
+  id              String   @id @default(uuid())
+  shopifyOrderId  String   @unique
+  orderNumber     String   // e.g. "#1001"
+  customerName    String
+  customerPhone   String
+  totalPrice      String
+  currency        String
+  status          String   // "AWAITING_PROOF", "PENDING_APPROVAL", "CONFIRMED", "REJECTED"
+  screenshotPath  String?  // Relative path to saved public image
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+

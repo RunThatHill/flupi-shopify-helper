@@ -17,13 +17,22 @@ import {
   Badge,
 } from "@shopify/polaris";
 import { TitleBar, useAppBridge } from "@shopify/app-bridge-react";
-import { authenticate } from "../shopify.server";
+import { authenticate, registerWebhooks } from "../shopify.server";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LOADER: Queries customer by email or order by number
 // ─────────────────────────────────────────────────────────────────────────────
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { admin } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
+
+  // Programmatically register webhooks for this store session
+  try {
+    const regResult = await registerWebhooks({ session });
+    console.log("[DEBUG] Webhook registration result:", JSON.stringify(regResult));
+  } catch (err: any) {
+    console.error("[DEBUG] Webhook registration error in loader:", err.message);
+  }
+
   const url = new URL(request.url);
   
   const emailQuery = url.searchParams.get("email")?.trim();

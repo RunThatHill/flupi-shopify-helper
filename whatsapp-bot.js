@@ -23,7 +23,7 @@ async function connectToWhatsApp() {
   const { version, isLatest } = await fetchLatestBaileysVersion();
   console.log(`[WA-Bot] Using Baileys version v${version.join('.')}, isLatest: ${isLatest}`);
 
-  sock = makeWASocket.default({
+  sock = makeWASocket({
     version,
     printQRInTerminal: true,
     auth: state,
@@ -153,6 +153,10 @@ app.post('/send-success', async (req, res) => {
 });
 
 // Start Express Server
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', uptime: process.uptime() });
+});
+
 app.listen(PORT, () => {
   console.log(`[WA-Bot] Express server running on port ${PORT}`);
 });

@@ -23,7 +23,7 @@ async function connectToWhatsApp() {
   const { version, isLatest } = await fetchLatestBaileysVersion();
   console.log(`[WA-Bot] Using Baileys version v${version.join('.')}, isLatest: ${isLatest}`);
 
-  sock = makeWASocket.default({
+  sock = makeWASocket({
     version,
     printQRInTerminal: true,
     auth: state,

@@ -1,3 +1,12 @@
+---
+title: Whatsapp Instapay Bot
+emoji: 💬
+colorFrom: purple
+colorTo: indigo
+sdk: docker
+pinned: false
+---
+
 # Setup Instructions: Deploy WhatsApp Bot to Hugging Face Spaces & Keep it Awake
 
 Follow these simple steps to deploy your bot for free and configure UptimeRobot to keep it running 24/7.

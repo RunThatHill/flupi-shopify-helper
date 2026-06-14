@@ -48,6 +48,14 @@ async function connectToWhatsApp() {
 
   sock.ev.on('creds.update', saveCreds);
 
+  sock.ev.on('contacts.update', (updates) => {
+    console.log('[DEBUG] Contacts updated:', JSON.stringify(updates));
+  });
+
+  sock.ev.on('contacts.upsert', (contacts) => {
+    console.log('[DEBUG] Contacts upserted:', JSON.stringify(contacts));
+  });
+
   // Listen to incoming messages
   sock.ev.on('messages.upsert', async (m) => {
     const msg = m.messages[0];
@@ -58,7 +66,8 @@ async function connectToWhatsApp() {
       const isImage = messageType === 'imageMessage';
 
       if (isImage) {
-        console.log(`[WA-Bot] Received image message from phone: ${phone}`);
+        console.log(`[WA-Bot] Received image message from JID: ${from}`);
+        console.log('[DEBUG] Full message object:', JSON.stringify(msg));
 
         try {
           // Download the image buffer

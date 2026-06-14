@@ -12,8 +12,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const gatewayNames: string[] = payload.payment_gateway_names || [];
     const gateway: string = payload.gateway || "";
     const isInstapay = 
-      gateway.toLowerCase() === "instapay" || 
-      gatewayNames.some(g => g.toLowerCase() === "instapay");
+      gateway.toLowerCase().includes("instapay") || 
+      gatewayNames.some(g => g.toLowerCase().includes("instapay"));
 
     if (!isInstapay) {
       console.log(`Order ${payload.name} gateway is not Instapay (${gateway || gatewayNames.join(", ")}). Skipping.`);

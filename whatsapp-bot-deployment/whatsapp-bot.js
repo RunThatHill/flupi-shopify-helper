@@ -91,7 +91,7 @@ async function connectToWhatsApp() {
           if (response.ok) {
             console.log(`[WA-Bot] Screenshot successfully processed for ${phone}`);
             await sock.sendMessage(from, { 
-              text: 'Thank you! We have received your payment screenshot. Our team will verify it shortly and confirm your order.' 
+              text: 'Thank you! We have received your payment screenshot. Our team will verify it shortly and confirm your order. Please note that verification can take up to 2 hours.' 
             });
           } else {
             console.warn(`[WA-Bot] Proof upload rejected by helper: ${resJson.error}`);
@@ -108,7 +108,7 @@ async function connectToWhatsApp() {
 
 // HTTP API: Send Instapay Payment Request
 app.post('/send-request', async (req, res) => {
-  const { phone, name, orderNumber, amount, currency } = req.body;
+  const { shopifyOrderId, phone, name, orderNumber, amount, currency } = req.body;
   if (!phone) {
     return res.status(400).json({ error: 'Missing phone' });
   }
@@ -120,8 +120,28 @@ app.post('/send-request', async (req, res) => {
     if (!sock) {
       throw new Error('WhatsApp client is not connected');
     }
-    await sock.sendMessage(jid, { text: message });
+    const sentMsg = await sock.sendMessage(jid, { text: message });
     console.log(`[WA-Bot] Sent payment request message to ${phone} for order ${orderNumber}`);
+    
+    // Check if JID resolved to a LID (Linked Identity)
+    const resolvedJid = sentMsg?.key?.remoteJid || jid;
+    const resolvedPhone = resolvedJid.split('@')[0];
+
+    if (resolvedPhone !== phone && shopifyOrderId) {
+      console.log(`[WA-Bot] Phone ${phone} resolved to JID/LID: ${resolvedPhone}. Updating helper...`);
+      fetch(`${HELPER_URL}/api/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_phone',
+          shopifyOrderId,
+          phone: resolvedPhone
+        })
+      }).catch(err => {
+        console.error('[WA-Bot] Failed to update helper with resolved JID/LID:', err.message);
+      });
+    }
+
     return res.json({ success: true });
   } catch (err) {
     console.error(`[WA-Bot] Failed to send payment request to ${phone}:`, err);

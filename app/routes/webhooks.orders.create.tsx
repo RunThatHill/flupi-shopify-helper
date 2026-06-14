@@ -72,6 +72,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        shopifyOrderId: String(payload.id),
         phone: cleanPhone,
         name: customerName,
         orderNumber,

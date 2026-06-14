@@ -41,6 +41,22 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const { action, shopifyOrderId, phone, screenshot, currency, amount } = body;
 
     // ─────────────────────────────────────────────────────────────────────────
+    // ACTION: update_phone (called by WhatsApp Bot when phone resolves to LID)
+    // ─────────────────────────────────────────────────────────────────────────
+    if (action === "update_phone") {
+      if (!shopifyOrderId || !phone) {
+        return json({ error: "Missing shopifyOrderId or phone" }, { status: 400, headers: corsHeaders });
+      }
+      const cleanPhone = phone.replace(/\D/g, "");
+      const updatedOrder = await db.instapayOrderQueue.update({
+        where: { shopifyOrderId },
+        data: { customerPhone: cleanPhone },
+      });
+      console.log(`[DEBUG] Updated order ${updatedOrder.orderNumber} phone to resolved JID/LID: ${cleanPhone}`);
+      return json({ success: true, order: updatedOrder }, { headers: corsHeaders });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // ACTION: upload_proof (called by WhatsApp Bot when customer sends media)
     // ─────────────────────────────────────────────────────────────────────────
     if (action === "upload_proof") {

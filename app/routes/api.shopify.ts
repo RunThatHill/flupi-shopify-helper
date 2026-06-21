@@ -187,6 +187,30 @@ export const action = async ({ request }: ActionFunctionArgs) => {
                 note
                 tags
                 createdAt
+                shippingAddress {
+                  name
+                  firstName
+                  lastName
+                  address1
+                  address2
+                  city
+                  province
+                  zip
+                  country
+                  phone
+                }
+                billingAddress {
+                  name
+                  firstName
+                  lastName
+                  address1
+                  address2
+                  city
+                  province
+                  zip
+                  country
+                  phone
+                }
                 lineItems(first: 50) {
                   edges {
                     node {
@@ -313,6 +337,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             note: node.note || "",
             tags: node.tags || [],
             shopifyCreatedAt: node.createdAt,
+            shippingAddress: node.shippingAddress,
+            billingAddress: node.billingAddress,
             shop: {
               id: "shopify-shop-favo-ops",
               domain: shop,

@@ -15,6 +15,7 @@ export const loader = async () => {
   return json(
     {
       status: "ok",
+      version: "v1.0.1 - diagnostics",
       environment: process.env.NODE_ENV || "production",
       database: {
         status: dbStatus,

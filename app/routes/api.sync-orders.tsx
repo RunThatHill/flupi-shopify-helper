@@ -22,6 +22,46 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       return json({ error: "Supabase client is not initialized" }, { status: 500, headers: corsHeaders });
     }
 
+    // ─── ADDED: Register Role Endpoint ───
+    const registerRole = url.searchParams.get("register_role") === "true";
+    if (registerRole) {
+      const userId = url.searchParams.get("userId");
+      const email = url.searchParams.get("email");
+      const role = url.searchParams.get("role") || "customer_care";
+      const fullName = url.searchParams.get("fullName");
+
+      if (!userId || !email) {
+        return json({ error: "Missing userId or email" }, { status: 400, headers: corsHeaders });
+      }
+
+      console.log(`[DEBUG] Registering/upserting role for user ${email} (${userId}) to role: ${role}`);
+
+      const defaultPermissionsMapping: Record<string, any> = {
+        "system_admin": { access_dashboard: true, access_tickets: true, access_products: true, access_vendors: true, access_orgchart: true, access_queues: true },
+        "customer_care": { access_dashboard: true, access_tickets: true, access_products: true, access_vendors: false, access_orgchart: true, access_queues: false },
+        "vendor_user": { access_dashboard: true, access_tickets: false, access_products: true, access_vendors: false, access_orgchart: false, access_queues: false }
+      };
+
+      const { data, error } = await supabase
+        .from("user_roles")
+        .upsert({
+          user_id: userId,
+          role: role,
+          email: email,
+          full_name: fullName || email.split("@")[0].split(/[._-]/).map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(" "),
+          username: email.split("@")[0],
+          permissions: defaultPermissionsMapping[role] || defaultPermissionsMapping["customer_care"]
+        })
+        .select();
+
+      if (error) {
+        console.error(`[ERROR] Failed to upsert user_role for ${email}:`, error.message);
+        return json({ success: false, error: error.message }, { status: 500, headers: corsHeaders });
+      }
+
+      return json({ success: true, data }, { headers: corsHeaders });
+    }
+
     if (diagnostics) {
       // 1. Fetch total orders count
       const { count: ordersCount, error: ordersCountError } = await supabase
@@ -33,7 +73,76 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         .from("user_roles")
         .select("*");
 
-      // 3. Fetch all auth users using the service role client
+      // 3. Try to create the demo users in Supabase Auth if they don't exist
+      const demoUsersToCreate = [
+        { email: "admin@favogroup.com", role: "system_admin", name: "System Admin" },
+        { email: "care@favogroup.com", role: "customer_care", name: "Customer Care Agent" },
+        { email: "vendor@favogroup.com", role: "vendor_user", name: "Zara Vendor" }
+      ];
+
+      const demoResults = [];
+      for (const demo of demoUsersToCreate) {
+        let userId = null;
+        let authResult = "Skipped/Exists";
+        try {
+          const { data: userData, error: createError } = await supabase.auth.admin.createUser({
+            email: demo.email,
+            password: "Password123!",
+            email_confirm: true
+          });
+          if (createError) {
+            authResult = `Exists/Error: ${createError.message}`;
+          } else if (userData?.user) {
+            userId = userData.user.id;
+            authResult = "Created";
+          }
+        } catch (err: any) {
+          authResult = `Exception: ${err.message || err}`;
+        }
+
+        // Check if there is an existing role for this email in user_roles
+        const { data: existingRole } = await supabase
+          .from("user_roles")
+          .select("user_id")
+          .eq("email", demo.email)
+          .maybeSingle();
+        
+        const resolvedUserId = userId || existingRole?.user_id;
+
+        if (resolvedUserId) {
+          const defaultPermissionsMapping: Record<string, any> = {
+            "system_admin": { access_dashboard: true, access_tickets: true, access_products: true, access_vendors: true, access_orgchart: true, access_queues: true },
+            "customer_care": { access_dashboard: true, access_tickets: true, access_products: true, access_vendors: false, access_orgchart: true, access_queues: false },
+            "vendor_user": { access_dashboard: true, access_tickets: false, access_products: true, access_vendors: false, access_orgchart: false, access_queues: false }
+          };
+
+          const { error: roleError } = await supabase
+            .from("user_roles")
+            .upsert({
+              user_id: resolvedUserId,
+              role: demo.role,
+              email: demo.email,
+              full_name: demo.name,
+              username: demo.email.split("@")[0],
+              permissions: defaultPermissionsMapping[demo.role]
+            });
+          
+          demoResults.push({
+            email: demo.email,
+            authResult,
+            roleResult: roleError ? `Error: ${roleError.message}` : "Upserted",
+            userId: resolvedUserId
+          });
+        } else {
+          demoResults.push({
+            email: demo.email,
+            authResult,
+            roleResult: "Skipped (No User ID resolved)"
+          });
+        }
+      }
+
+      // 4. Fetch all auth users using the service role client
       let authUsers: any[] = [];
       let authError: any = null;
       try {
@@ -41,10 +150,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         authUsers = data?.users || [];
         authError = error?.message || null;
       } catch (err: any) {
-        authError = err.message;
+        authError = err.stack || err.message || String(err);
       }
 
-      // 4. Auto-repair / seed: If there are users in Auth but not in user_roles, create roles for them
+      // 5. Auto-repair / seed: If there are users in Auth but not in user_roles, create roles for them
       const repairedUsers = [];
       for (const u of authUsers) {
         const hasRole = userRoles?.some(r => r.user_id === u.id);
@@ -82,21 +191,18 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         }
       }
 
-      // Re-fetch user roles if repaired
-      let finalUserRoles = userRoles;
-      if (repairedUsers.length > 0) {
-        const { data } = await supabase.from("user_roles").select("*");
-        finalUserRoles = data || [];
-      }
+      // Re-fetch user roles
+      const { data: finalUserRoles } = await supabase.from("user_roles").select("*");
 
       return json({
         success: true,
         ordersCount: ordersCount ?? 0,
         ordersCountError: ordersCountError?.message || null,
-        userRoles: finalUserRoles,
+        userRoles: finalUserRoles || [],
         rolesError: rolesError?.message || null,
         authUsersCount: authUsers.length,
         authError,
+        demoResults,
         repairedUsers
       }, { headers: corsHeaders });
     }

@@ -13,10 +13,94 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
   const shopDomain = url.searchParams.get("shop") || "yf8qqz-at.myshopify.com";
   const limit = url.searchParams.get("limit") || "50";
+  const diagnostics = url.searchParams.get("diagnostics") === "true";
 
-  console.log(`[DEBUG] Syncing orders for shop: ${shopDomain}, limit: ${limit}`);
+  console.log(`[DEBUG] Syncing orders for shop: ${shopDomain}, limit: ${limit}, diagnostics: ${diagnostics}`);
 
   try {
+    if (!supabase) {
+      return json({ error: "Supabase client is not initialized" }, { status: 500, headers: corsHeaders });
+    }
+
+    if (diagnostics) {
+      // 1. Fetch total orders count
+      const { count: ordersCount, error: ordersCountError } = await supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true });
+
+      // 2. Fetch all user roles from public.user_roles
+      const { data: userRoles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("*");
+
+      // 3. Fetch all auth users using the service role client
+      let authUsers: any[] = [];
+      let authError: any = null;
+      try {
+        const { data, error } = await supabase.auth.admin.listUsers();
+        authUsers = data?.users || [];
+        authError = error?.message || null;
+      } catch (err: any) {
+        authError = err.message;
+      }
+
+      // 4. Auto-repair / seed: If there are users in Auth but not in user_roles, create roles for them
+      const repairedUsers = [];
+      for (const u of authUsers) {
+        const hasRole = userRoles?.some(r => r.user_id === u.id);
+        if (!hasRole) {
+          const email = u.email || "";
+          let role = "customer_care";
+          if (email === "admin@favogroup.com" || email.toLowerCase() === "abdelmassehmourad@gmail.com") {
+            role = "system_admin";
+          } else if (email === "vendor@favogroup.com") {
+            role = "vendor_user";
+          }
+          
+          const defaultPermissionsMapping: Record<string, any> = {
+            "system_admin": { access_dashboard: true, access_tickets: true, access_products: true, access_vendors: true, access_orgchart: true, access_queues: true },
+            "customer_care": { access_dashboard: true, access_tickets: true, access_products: true, access_vendors: false, access_orgchart: true, access_queues: false },
+            "vendor_user": { access_dashboard: true, access_tickets: false, access_products: true, access_vendors: false, access_orgchart: false, access_queues: false }
+          };
+
+          const { error: insertError } = await supabase
+            .from("user_roles")
+            .insert({
+              user_id: u.id,
+              role: role,
+              email: email,
+              full_name: email.split("@")[0].split(/[._-]/).map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(" "),
+              username: email.split("@")[0],
+              permissions: defaultPermissionsMapping[role]
+            });
+          
+          if (!insertError) {
+            repairedUsers.push({ id: u.id, email, role });
+          } else {
+            console.error(`[ERROR] Failed to repair user role for ${email}:`, insertError.message);
+          }
+        }
+      }
+
+      // Re-fetch user roles if repaired
+      let finalUserRoles = userRoles;
+      if (repairedUsers.length > 0) {
+        const { data } = await supabase.from("user_roles").select("*");
+        finalUserRoles = data || [];
+      }
+
+      return json({
+        success: true,
+        ordersCount: ordersCount ?? 0,
+        ordersCountError: ordersCountError?.message || null,
+        userRoles: finalUserRoles,
+        rolesError: rolesError?.message || null,
+        authUsersCount: authUsers.length,
+        authError,
+        repairedUsers
+      }, { headers: corsHeaders });
+    }
+
     // 1. Get session from DB
     let session = await db.session.findFirst({
       where: { shop: shopDomain },
@@ -31,10 +115,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
     if (!accessToken) {
       return json({ error: "No active Shopify session found" }, { status: 404, headers: corsHeaders });
-    }
-
-    if (!supabase) {
-      return json({ error: "Supabase client is not initialized" }, { status: 500, headers: corsHeaders });
     }
 
     // 2. Fetch orders from Shopify REST API

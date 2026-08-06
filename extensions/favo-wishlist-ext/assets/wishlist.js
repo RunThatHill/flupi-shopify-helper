@@ -6,6 +6,28 @@
   let customerId = "";
   let shop = "";
 
+  // Dynamic Toast popup system
+  function showToast(message) {
+    let container = document.querySelector(".favo-toast-container");
+    if (!container) {
+      container = document.createElement("div");
+      container.className = "favo-toast-container";
+      document.body.appendChild(container);
+    }
+
+    const toast = document.createElement("div");
+    toast.className = "favo-toast";
+    toast.innerHTML = message;
+    container.appendChild(toast);
+
+    setTimeout(() => toast.classList.add("is-show"), 10);
+
+    setTimeout(() => {
+      toast.classList.remove("is-show");
+      setTimeout(() => toast.remove(), 300);
+    }, 2500);
+  }
+
   function getLocal() {
     try { return JSON.parse(localStorage.getItem(LOCAL_KEY)) || []; } 
     catch (e) { return []; }
@@ -48,7 +70,7 @@
       const data = await res.json();
       if (data.success) localStorage.removeItem(LOCAL_KEY);
     } catch (e) {
-      console.error("[Favo] Sync failed:", e);
+      console.warn("[Favo Wishlist] Sync failed, keeping local items:", e);
     }
   }
 
@@ -56,15 +78,20 @@
     const isPage = document.querySelector(".favo-wishlist-page-container") !== null;
     try {
       const res = await fetch(`${PROXY}?shop=${shop}${isPage ? "&full=true" : ""}`);
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      
       const data = await res.json();
       if (data.success) {
         state = data.wishlist || [];
-        updateButtons();
-        renderPage();
+      } else {
+        throw new Error(data.error || "Failed loading");
       }
     } catch (e) {
-      console.error("[Favo] Load failed:", e);
+      console.warn("[Favo Wishlist] Proxy fetch failed. Falling back to local storage:", e);
+      state = getLocal(); // Fallback to local storage
     }
+    updateButtons();
+    renderPage();
   }
 
   function updateButtons() {
@@ -106,8 +133,11 @@
       const currency = wrapper.getAttribute("data-product-currency");
 
       const isSaved = state.some(i => i.productId === productId);
+      const item = { productId, title, handle, imageUrl, price, currencyCode: currency };
+      let success = false;
 
       if (isSaved) {
+        // --- REMOVE ACTION ---
         if (isCustomer) {
           try {
             const res = await fetch(`${PROXY}?shop=${shop}`, {
@@ -116,16 +146,24 @@
               body: JSON.stringify({ action: "delete", productId })
             });
             const data = await res.json();
-            if (data.success) state = state.filter(i => i.productId !== productId);
+            if (data.success) {
+              state = state.filter(i => i.productId !== productId);
+              success = true;
+            }
           } catch (err) {
-            console.error("[Favo] Remove failed:", err);
+            console.warn("[Favo Wishlist] API delete failed, using local fallback:", err);
           }
-        } else {
+        }
+        
+        // Fallback for failed API or Guest
+        if (!success) {
           state = state.filter(i => i.productId !== productId);
           setLocal(state);
+          success = true;
         }
+        showToast("🤍 Removed from Wishlist");
       } else {
-        const item = { productId, title, handle, imageUrl, price, currencyCode: currency };
+        // --- ADD ACTION ---
         if (isCustomer) {
           try {
             const res = await fetch(`${PROXY}?shop=${shop}`, {
@@ -134,14 +172,22 @@
               body: JSON.stringify({ productId })
             });
             const data = await res.json();
-            if (data.success) state.push(item);
+            if (data.success) {
+              state.push(item);
+              success = true;
+            }
           } catch (err) {
-            console.error("[Favo] Add failed:", err);
+            console.warn("[Favo Wishlist] API save failed, using local fallback:", err);
           }
-        } else {
+        }
+
+        // Fallback for failed API or Guest
+        if (!success) {
           state.push(item);
           setLocal(state);
+          success = true;
         }
+        showToast("❤️ Added to Wishlist");
       }
       updateButtons();
       button.disabled = false;
@@ -202,6 +248,7 @@
         removeBtn.addEventListener("click", async function (e) {
           e.preventDefault();
           removeBtn.disabled = true;
+          let removed = false;
 
           if (isCustomer) {
             try {
@@ -211,15 +258,21 @@
                 body: JSON.stringify({ action: "delete", productId: item.productId })
               });
               const data = await res.json();
-              if (data.success) state = state.filter(w => w.productId !== item.productId);
+              if (data.success) {
+                state = state.filter(w => w.productId !== item.productId);
+                removed = true;
+              }
             } catch (err) {
-              console.error("[Favo] Delete failed:", err);
+              console.warn("[Favo Wishlist] Delete API failed, removing locally:", err);
             }
-          } else {
+          }
+
+          if (!removed) {
             state = state.filter(w => w.productId !== item.productId);
             setLocal(state);
           }
 
+          showToast("🤍 Removed from Wishlist");
           renderPage();
           updateButtons();
         });

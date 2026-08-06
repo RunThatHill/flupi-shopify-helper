@@ -380,3 +380,52 @@
     padding: 8px 12px;
   }
 }
+
+/* Toast Notifications */
+.favo-toast-container {
+  position: fixed !important;
+  bottom: 24px !important;
+  right: 24px !important;
+  z-index: 999999 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  pointer-events: none !important;
+}
+
+.favo-toast {
+  background: #121212 !important;
+  color: #ffffff !important;
+  padding: 12px 24px !important;
+  border-radius: var(--favo-wishlist-radius) !important;
+  font-family: inherit !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  opacity: 0 !important;
+  transform: translateY(20px) !important;
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+  pointer-events: auto !important;
+}
+
+.favo-toast.is-show {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+@media (max-width: 767px) {
+  .favo-toast-container {
+    bottom: 16px !important;
+    right: 16px !important;
+    left: 16px !important;
+    align-items: center !important;
+  }
+  .favo-toast {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+

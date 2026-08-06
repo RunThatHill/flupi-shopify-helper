@@ -12,7 +12,7 @@
 
 /* Button on Product page */
 .favo-wishlist-btn-wrapper {
-  margin: 1.5rem 0;
+  margin: 8px 0 !important;
   width: 100%;
   display: flex !important;
   justify-content: var(--favo-btn-align, center) !important;
@@ -26,12 +26,12 @@
   background-color: var(--favo-btn-bg, #ffffff) !important;
   border: 1px solid var(--favo-btn-text, #121212) !important;
   border-radius: var(--favo-wishlist-radius);
-  padding: 12px 24px;
+  padding: 10px 20px !important;
   cursor: pointer;
   width: 100%;
   max-width: var(--favo-btn-max-width, 320px) !important;
   font-family: inherit;
-  font-size: 15px;
+  font-size: 14px !important;
   font-weight: 500;
   color: var(--favo-btn-text, #121212) !important;
   transition: var(--favo-wishlist-transition);

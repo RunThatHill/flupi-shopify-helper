@@ -1,0 +1,6 @@
+api_version = "2026-07"
+
+[[extensions]]
+name = "Favo Wishlist"
+handle = "favo-wishlist-ext"
+type = "theme"

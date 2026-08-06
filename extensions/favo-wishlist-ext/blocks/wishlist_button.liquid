@@ -1,0 +1,39 @@
+<div class="favo-wishlist-btn-wrapper" 
+     data-product-id="gid://shopify/Product/{{ product.id }}"
+     data-product-title="{{ product.title | escape }}"
+     data-product-handle="{{ product.handle }}"
+     data-product-img="{{ product.featured_image | img_url: '400x400' }}"
+     data-product-price="{{ product.price | money_without_currency }}"
+     data-product-currency="{{ cart.currency.iso_code }}"
+     data-customer-id="{% if customer %}gid://shopify/Customer/{{ customer.id }}{% endif %}"
+     data-shop="{{ shop.permanent_domain }}">
+  <button type="button" class="favo-wishlist-btn" aria-label="Add to wishlist">
+    <div class="favo-heart-container">
+      <img src="{{ 'heart.png' | asset_url }}" class="favo-heart-img" alt="Heart" width="24" height="24" loading="lazy" />
+    </div>
+    <span class="favo-btn-text">Add to Wishlist</span>
+  </button>
+</div>
+
+{% schema %}
+{
+  "name": "Favo Wishlist Button",
+  "target": "section",
+  "stylesheet": "wishlist.css",
+  "javascript": "wishlist.js",
+  "settings": [
+    {
+      "type": "text",
+      "id": "btn_text_add",
+      "label": "Button Text (Add)",
+      "default": "Add to Wishlist"
+    },
+    {
+      "type": "text",
+      "id": "btn_text_remove",
+      "label": "Button Text (Remove)",
+      "default": "Remove from Wishlist"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,43 @@
+<div class="favo-wishlist-page-container" 
+     data-customer-id="{% if customer %}gid://shopify/Customer/{{ customer.id }}{% endif %}"
+     data-shop="{{ shop.permanent_domain }}"
+     data-heart-icon-url="{{ 'heart.png' | asset_url }}">
+  <div class="favo-wishlist-header">
+    <h1 class="favo-wishlist-title">{{ section.settings.page_title | default: "My Wishlist" }}</h1>
+    <p class="favo-wishlist-count-text"><span id="favo-wishlist-count">0</span> items saved</p>
+  </div>
+  
+  <div class="favo-wishlist-loading">
+    <div class="favo-spinner"></div>
+  </div>
+
+  <div class="favo-wishlist-grid favo-hidden" id="favo-wishlist-grid">
+    <!-- Will be dynamically populated with wishlisted products via javascript -->
+  </div>
+
+  <div class="favo-wishlist-empty-state favo-hidden" id="favo-wishlist-empty">
+    <div class="favo-empty-icon-wrapper">
+      <img src="{{ 'heart.png' | asset_url }}" class="favo-empty-heart-img" alt="Empty Heart" width="64" height="64" />
+    </div>
+    <h2 class="favo-empty-title">Your wishlist is empty</h2>
+    <p class="favo-empty-subtitle">Save items you love here to keep track of them!</p>
+    <a href="/collections/all" class="favo-continue-shopping-btn">Continue Shopping</a>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Favo Wishlist Page",
+  "target": "section",
+  "stylesheet": "wishlist.css",
+  "javascript": "wishlist.js",
+  "settings": [
+    {
+      "type": "text",
+      "id": "page_title",
+      "label": "Page Title",
+      "default": "My Wishlist"
+    }
+  ]
+}
+{% endschema %}

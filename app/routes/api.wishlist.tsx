@@ -52,10 +52,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       const productIds = items.map(item => item.product_id);
       
       try {
-        // Query Shopify Admin GraphQL API for the product information in batch
+        // Query Shopify Admin GraphQL API for the product information in batch (compatible with all API versions)
         const response = await admin.graphql(
           `#graphql
           query GetWishlistProducts($ids: [ID!]!) {
+            shop {
+              currencyCode
+            }
             nodes(ids: $ids) {
               ... on Product {
                 id
@@ -65,17 +68,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
                   url
                   altText
                 }
-                priceRange {
-                  minVariantPrice {
-                    amount
-                    currencyCode
-                  }
-                }
                 variants(first: 1) {
                   edges {
                     node {
                       id
                       title
+                      price
                     }
                   }
                 }
@@ -90,20 +88,28 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         );
 
         const resJson = await response.json();
+        
+        // Log query errors if any
+        if (resJson.errors) {
+          console.error("[WISHLIST] Shopify GraphQL errors:", resJson.errors);
+        }
+
+        const currencyCode = resJson.data?.shop?.currencyCode || "EGP";
         const nodes = resJson.data?.nodes || [];
         
         // Filter out null nodes (products deleted from Shopify)
         const productsMap = nodes
           .filter((node: any) => node !== null && node.id)
           .reduce((acc: any, node: any) => {
+            const firstVariant = node.variants?.edges?.[0]?.node;
             acc[node.id] = {
               title: node.title,
               handle: node.handle,
               imageUrl: node.featuredImage?.url || "",
               imageAlt: node.featuredImage?.altText || node.title,
-              price: node.priceRange?.minVariantPrice?.amount || "0.00",
-              currencyCode: node.priceRange?.minVariantPrice?.currencyCode || "USD",
-              firstVariantId: node.variants?.edges?.[0]?.node?.id || ""
+              price: firstVariant?.price || "0.00",
+              currencyCode: currencyCode,
+              firstVariantId: firstVariant?.id || ""
             };
             return acc;
           }, {});
@@ -128,7 +134,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         });
       } catch (err: any) {
         console.error("[WISHLIST] Failed to fetch product details from Shopify GraphQL:", err);
-        // Fallback to simple list if GraphQL fails
       }
     }
 

@@ -36,3 +36,8 @@ redirect_urls = [
 
 [build]
 automatically_update_urls_on_dev = true
+
+[app_proxy]
+url = "https://flupi-shopify-helper-production.up.railway.app/api/wishlist"
+subpath = "favo-wishlist"
+prefix = "apps"

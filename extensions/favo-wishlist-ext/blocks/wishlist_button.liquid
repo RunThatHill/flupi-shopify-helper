@@ -1,4 +1,12 @@
 <div class="favo-wishlist-btn-wrapper" 
+     style="
+       --favo-btn-align: {{ block.settings.alignment }};
+       --favo-btn-bg: {{ block.settings.btn_bg_color }};
+       --favo-btn-text: {{ block.settings.btn_text_color }};
+       --favo-btn-bg-hover: {{ block.settings.btn_bg_hover_color }};
+       --favo-btn-text-hover: {{ block.settings.btn_text_hover_color }};
+       --favo-btn-max-width: {{ block.settings.btn_max_width }}px;
+     "
      data-product-id="gid://shopify/Product/{{ product.id }}"
      data-product-title="{{ product.title | escape }}"
      data-product-handle="{{ product.handle }}"
@@ -6,12 +14,14 @@
      data-product-price="{{ product.price | money_without_currency }}"
      data-product-currency="{{ cart.currency.iso_code }}"
      data-customer-id="{% if customer %}gid://shopify/Customer/{{ customer.id }}{% endif %}"
-     data-shop="{{ shop.permanent_domain }}">
+     data-shop="{{ shop.permanent_domain }}"
+     data-btn-text-add="{{ block.settings.btn_text_add | escape }}"
+     data-btn-text-remove="{{ block.settings.btn_text_remove | escape }}">
   <button type="button" class="favo-wishlist-btn" aria-label="Add to wishlist">
     <div class="favo-heart-container">
       <img src="{{ 'heart.png' | asset_url }}" class="favo-heart-img" alt="Heart" width="24" height="24" loading="lazy" />
     </div>
-    <span class="favo-btn-text">Add to Wishlist</span>
+    <span class="favo-btn-text">{{ block.settings.btn_text_add }}</span>
   </button>
 </div>
 
@@ -33,6 +43,51 @@
       "id": "btn_text_remove",
       "label": "Button Text (Remove)",
       "default": "Remove from Wishlist"
+    },
+    {
+      "type": "select",
+      "id": "alignment",
+      "label": "Button Alignment",
+      "options": [
+        { "value": "flex-start", "label": "Left" },
+        { "value": "center", "label": "Center" },
+        { "value": "flex-end", "label": "Right" }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "range",
+      "id": "btn_max_width",
+      "label": "Button Maximum Width",
+      "min": 150,
+      "max": 600,
+      "step": 10,
+      "unit": "px",
+      "default": 320
+    },
+    {
+      "type": "color",
+      "id": "btn_bg_color",
+      "label": "Button Background Color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "btn_text_color",
+      "label": "Button Text & Border Color",
+      "default": "#121212"
+    },
+    {
+      "type": "color",
+      "id": "btn_bg_hover_color",
+      "label": "Button Hover Background Color",
+      "default": "#f5f5f5"
+    },
+    {
+      "type": "color",
+      "id": "btn_text_hover_color",
+      "label": "Button Hover Text Color",
+      "default": "#121212"
     }
   ]
 }

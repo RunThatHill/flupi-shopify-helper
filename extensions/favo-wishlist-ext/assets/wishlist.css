@@ -14,32 +14,35 @@
 .favo-wishlist-btn-wrapper {
   margin: 1.5rem 0;
   width: 100%;
+  display: flex !important;
+  justify-content: var(--favo-btn-align, center) !important;
 }
 
 .favo-wishlist-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   gap: 10px;
-  background: transparent;
-  border: 1px solid var(--favo-wishlist-border-color);
+  background-color: var(--favo-btn-bg, #ffffff) !important;
+  border: 1px solid var(--favo-btn-text, #121212) !important;
   border-radius: var(--favo-wishlist-radius);
   padding: 12px 24px;
   cursor: pointer;
   width: 100%;
-  max-width: 320px;
+  max-width: var(--favo-btn-max-width, 320px) !important;
   font-family: inherit;
   font-size: 15px;
   font-weight: 500;
-  color: var(--favo-wishlist-primary);
+  color: var(--favo-btn-text, #121212) !important;
   transition: var(--favo-wishlist-transition);
   position: relative;
   overflow: hidden;
 }
 
 .favo-wishlist-btn:hover {
-  background-color: var(--favo-wishlist-bg-hover);
-  border-color: var(--favo-wishlist-primary);
+  background-color: var(--favo-btn-bg-hover, #f5f5f5) !important;
+  border-color: var(--favo-btn-text-hover, #121212) !important;
+  color: var(--favo-btn-text-hover, #121212) !important;
   transform: translateY(-1px);
 }
 
@@ -49,14 +52,21 @@
 
 /* Heart Icon styling */
 .favo-heart-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 24px !important;
+  height: 24px !important;
+  flex-shrink: 0 !important;
 }
 
 .favo-heart-img {
+  width: 24px !important;
+  height: 24px !important;
+  max-width: 24px !important;
+  max-height: 24px !important;
+  display: block !important;
+  object-fit: contain !important;
   transition: var(--favo-wishlist-transition);
   filter: grayscale(100%) brightness(1.2);
   opacity: 0.45;
@@ -189,6 +199,10 @@
 }
 
 .favo-remove-btn .favo-heart-img {
+  width: 18px !important;
+  height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
   filter: none;
   opacity: 1;
 }

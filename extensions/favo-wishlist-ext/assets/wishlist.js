@@ -198,10 +198,7 @@
       showToast("🖤 Added to Wishlist");
     }
 
-    setLocal(state.filter(i => {
-      // Guest items stay in local storage, customer synced items are cleared out of localStorage
-      return !isCustomer || getLocal().some(x => x.productId === i.productId);
-    }));
+    setLocal(state);
 
     updateButtons();
     renderPage();

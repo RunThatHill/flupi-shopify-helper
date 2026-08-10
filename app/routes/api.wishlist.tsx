@@ -15,15 +15,21 @@ const jsonResponse = (data: any, status = 200) => {
 
 // Helper to query Shopify Admin GraphQL API using offline token
 const executeShopifyGraphQL = async (shop: string, query: string, variables: any = {}) => {
-  // 1. Find the offline session to get the token
+  // Normalize shop to ensure it is always the .myshopify.com domain
+  let resolvedShop = shop;
+  if (!resolvedShop.endsWith(".myshopify.com")) {
+    const session = await db.session.findFirst();
+    resolvedShop = session?.shop || process.env.SHOPIFY_SHOP || "yf8qqz-at.myshopify.com";
+  }
+
+  // Find the offline session to get the token
   const offlineSession = await db.session.findFirst({
-    where: { shop },
+    where: { shop: resolvedShop },
   });
   const token = offlineSession?.accessToken || process.env.SHOPIFY_ACCESS_TOKEN || "";
-  const resolvedShop = offlineSession?.shop || process.env.SHOPIFY_SHOP || shop;
 
   if (!token) {
-    throw new Error(`No active access token found for shop: ${shop}`);
+    throw new Error(`No active access token found for shop: ${resolvedShop}`);
   }
 
   const endpoint = `https://${resolvedShop}/admin/api/2026-04/graphql.json`;
@@ -47,6 +53,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     const shop = url.searchParams.get("shop") || session?.shop || "";
     const fullDetails = url.searchParams.get("full") === "true";
     
+    console.log(`[WISHLIST] Loader request for shop: ${shop}, customerIdRaw: ${customerIdRaw}, fullDetails: ${fullDetails}`);
+
     if (!customerIdRaw) {
       // Guest: return empty array, UI will read from localStorage
       return jsonResponse({ success: true, wishlist: [], isGuest: true });
@@ -66,7 +74,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     `;
 
     const metaResult = await executeShopifyGraphQL(shop, getMetafieldQuery, { id: customerId });
+    
+    if (metaResult.errors) {
+      console.error("[WISHLIST] GraphQL metafield query errors:", JSON.stringify(metaResult.errors));
+    }
+
     const metafieldValue = metaResult.data?.customer?.metafield?.value;
+    console.log(`[WISHLIST] Metafield raw value retrieved: ${metafieldValue}`);
     
     let wishlistProductIds: string[] = [];
     if (metafieldValue) {
@@ -112,6 +126,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
       try {
         const prodResult = await executeShopifyGraphQL(shop, getProductsQuery, { ids: wishlistProductIds });
+        
+        if (prodResult.errors) {
+          console.error("[WISHLIST] GraphQL products query errors:", JSON.stringify(prodResult.errors));
+        }
+
         const currencyCode = prodResult.data?.shop?.currencyCode || "EGP";
         const nodes = prodResult.data?.nodes || [];
 
@@ -146,6 +165,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
             };
           })
           .filter(item => item !== null);
+
+        console.log(`[WISHLIST] Returning enriched wishlist size: ${enrichedWishlist.length}`);
 
         return jsonResponse({
           success: true,
@@ -185,6 +206,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const body = await request.json().catch(() => ({}));
     const { action, productId, items } = body;
 
+    console.log(`[WISHLIST] Action request: ${action}, productId: ${productId}, shop: ${shop}, customer: ${customerId}`);
+
     // 1. Fetch current wishlist metafield from Shopify
     const getMetafieldQuery = `
       query GetCustomerWishlist($id: ID!) {
@@ -197,6 +220,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     `;
 
     const metaResult = await executeShopifyGraphQL(shop, getMetafieldQuery, { id: customerId });
+    
+    if (metaResult.errors) {
+      console.error("[WISHLIST] GraphQL action query errors:", JSON.stringify(metaResult.errors));
+    }
+
     const metafieldValue = metaResult.data?.customer?.metafield?.value;
     
     let wishlistProductIds: string[] = [];
@@ -216,7 +244,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       if (Array.isArray(items)) {
         const localIds = items.map((i: any) => i.productId).filter((id: any) => typeof id === "string" && id.startsWith("gid://"));
         const combined = [...wishlistProductIds, ...localIds];
-        // Keep unique values
         const uniqueIds = Array.from(new Set(combined));
         if (uniqueIds.length !== wishlistProductIds.length) {
           wishlistProductIds = uniqueIds;
@@ -239,6 +266,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     // 3. If changed, push update back to customer metafield on Shopify
     if (modified || action === "sync") {
+      console.log(`[WISHLIST] Updating customer metafield with new values: ${JSON.stringify(wishlistProductIds)}`);
+      
       const updateMetafieldMutation = `
         mutation customerUpdate($input: CustomerInput!) {
           customerUpdate(input: $input) {
@@ -269,9 +298,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
       const mutationResult = await executeShopifyGraphQL(shop, updateMetafieldMutation, variables);
       
+      if (mutationResult.errors) {
+        console.error("[WISHLIST] GraphQL action mutation errors:", JSON.stringify(mutationResult.errors));
+      }
+
       const errors = mutationResult.data?.customerUpdate?.userErrors;
       if (errors && errors.length > 0) {
-        console.error("[WISHLIST] customerUpdate errors:", errors);
+        console.error("[WISHLIST] customerUpdate userErrors:", errors);
         return jsonResponse({ error: errors[0].message }, 500);
       }
     }

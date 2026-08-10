@@ -339,7 +339,6 @@
             <img src="${item.imageUrl}" class="favo-product-img" alt="${item.title}" loading="lazy" />
           </a>
           <div class="favo-product-info">
-            <h4 class="favo-product-brand">${item.vendor || "FLÙPI"}</h4>
             <a href="/products/${item.handle}" class="favo-product-title-link">
               <p class="favo-product-title">${item.title}</p>
             </a>

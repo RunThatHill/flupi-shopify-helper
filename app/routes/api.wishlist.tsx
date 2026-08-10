@@ -148,7 +148,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
               price: firstVariant?.price || "0.00",
               compareAtPrice: firstVariant?.compareAtPrice || null,
               currencyCode: currencyCode,
-              firstVariantId: firstVariant?.id || ""
+              firstVariantId: firstVariant?.id ? firstVariant.id.split("/").pop() : ""
             };
             return acc;
           }, {});

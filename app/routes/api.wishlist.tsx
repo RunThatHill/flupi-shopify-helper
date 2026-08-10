@@ -104,7 +104,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
               title
               handle
               vendor
-              availableForSale
+              totalInventory
               featuredImage {
                 url
                 altText
@@ -142,7 +142,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
               title: node.title,
               handle: node.handle,
               vendor: node.vendor || "",
-              availableForSale: node.availableForSale,
+              availableForSale: node.totalInventory === null || node.totalInventory > 0,
               imageUrl: node.featuredImage?.url || "",
               imageAlt: node.featuredImage?.altText || node.title,
               price: firstVariant?.price || "0.00",

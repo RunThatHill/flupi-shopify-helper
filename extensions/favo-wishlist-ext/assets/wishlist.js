@@ -50,7 +50,7 @@
       shop = window.Shopify?.shop || "";
       state = getLocal();
       updateButtons();
-      observeDynamicGrids();
+      setupIntervalScan();
       return;
     }
 
@@ -68,7 +68,7 @@
       renderPage();
     }
     setupEvents();
-    observeDynamicGrids();
+    setupIntervalScan();
   }
 
   async function syncLocal(items) {
@@ -506,20 +506,22 @@
     cartLink.parentNode.insertBefore(heartLink, cartLink);
   }
 
-  // MutationObserver to scan dynamically loaded grids (Pagination, Filters)
-  function observeDynamicGrids() {
-    const observer = new MutationObserver((mutations) => {
-      let shouldScan = false;
-      mutations.forEach(m => {
-        if (m.addedNodes.length > 0) shouldScan = true;
-      });
-      if (shouldScan) {
+  // High-performance dynamic grid scanner (scans on scroll end & fallback interval)
+  function setupIntervalScan() {
+    let scrollTimeout = null;
+    window.addEventListener("scroll", function () {
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(function () {
         injectCardHearts();
         updateButtons();
-      }
-    });
+      }, 300);
+    }, { passive: true });
 
-    observer.observe(document.body, { childList: true, subtree: true });
+    // Scan every 2 seconds for new products loaded via filters/ajax
+    setInterval(function () {
+      injectCardHearts();
+      updateButtons();
+    }, 2000);
   }
 
   if (document.readyState === "loading") {

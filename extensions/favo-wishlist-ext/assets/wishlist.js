@@ -195,7 +195,7 @@
       showToast("🤍 Removed from Wishlist");
     } else {
       state.push(item);
-      showToast("❤️ Added to Wishlist");
+      showToast("🖤 Added to Wishlist");
     }
 
     setLocal(state.filter(i => {

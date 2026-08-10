@@ -525,8 +525,8 @@
 }
 
 .favo-card-heart-btn.is-active .favo-heart-svg {
-  color: #e11d48;
-  fill: #e11d48;
+  color: #121212;
+  fill: #121212;
 }
 
 /* Header Live Heart Badge */
@@ -556,7 +556,7 @@
   position: absolute;
   top: 4px;
   right: 4px;
-  background: #e11d48;
+  background: #121212;
   color: #ffffff;
   font-size: 9px;
   font-weight: 700;

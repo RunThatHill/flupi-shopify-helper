@@ -151,10 +151,12 @@
   .favo-mega-promos {
     display: flex;
     gap: 20px;
+    justify-content: flex-end;
   }
 
   .favo-mega-promo-card {
     flex: 1;
+    max-width: 160px;
     display: flex;
     flex-direction: column;
     text-decoration: none;
@@ -184,6 +186,21 @@
     transition: transform 0.4s ease;
   }
 
+  .favo-promo-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f1f5f9;
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
   .favo-mega-promo-card:hover img {
     transform: scale(1.04);
   }
@@ -196,104 +213,118 @@
     letter-spacing: 0.5px;
   }
 
-  .favo-mega-column-error {
-    color: #ef4444;
-    font-size: 13px;
-    padding: 10px;
-    background: #fef2f2;
-    border: 1px dashed #fca5a5;
+  .favo-nav-empty {
+    padding: 20px;
+    text-align: center;
+    font-size: 14px;
+    color: #707070;
+    border: 1px dashed #e5e5e5;
   }
 </style>
 
-<div class="favo-mega-nav-wrapper" 
-     style="--nav-bg-color: {{ section.settings.background_color | default: '#ffffff' }}; --nav-text-color: {{ section.settings.text_color | default: '#121212' }};">
-  <nav class="favo-mega-nav" aria-label="Mega Navigation">
-    <ul class="favo-mega-nav-list">
-      
-      <!-- Load custom menu items from shop metaobject values sorted by position -->
-      {% assign sorted_items = shop.metaobjects.mega_menu_item.values | sort: "position" %}
-      {% for item in sorted_items %}
-        {% assign menu_handle = item.menu_handle.value | default: item.menu_handle %}
-        <li class="favo-mega-nav-item">
-          <a href="{{ item.url.value | default: item.url | default: '#' }}" class="favo-mega-nav-link">
-            {{ item.title.value | default: item.title | escape }}
-          </a>
-          
-          <!-- Dropdown container if navigation list or promos are attached -->
-          {% if menu_handle != blank or item.promo_image_1 != blank or item.promo_image_2 != blank %}
-            <div class="favo-mega-dropdown">
-              <div class="favo-mega-dropdown-inner">
-                
-                <!-- Category columns -->
-                {% if menu_handle != blank %}
+{% assign main_menu = linklists[section.settings.menu] %}
+
+{% if main_menu != blank %}
+  <div class="favo-mega-nav-wrapper" 
+       style="--nav-bg-color: {{ section.settings.background_color | default: '#ffffff' }}; --nav-text-color: {{ section.settings.text_color | default: '#121212' }};">
+    <nav class="favo-mega-nav" aria-label="Mega Navigation">
+      <ul class="favo-mega-nav-list">
+        
+        {% for link in main_menu.links %}
+          <li class="favo-mega-nav-item">
+            <a href="{{ link.url }}" class="favo-mega-nav-link">
+              {{ link.title }}
+            </a>
+            
+            <!-- Generate dropdown if submenu contains active links -->
+            {% if link.links != blank %}
+              <div class="favo-mega-dropdown">
+                <div class="favo-mega-dropdown-inner">
+                  
+                  <!-- Subcategory column list (Level 2 & Level 3 Links) -->
                   <div class="favo-mega-columns">
-                    {% assign submenu = linklists[menu_handle] %}
-                    {% if submenu != blank and submenu.links.size > 0 %}
-                      {% for link in submenu.links %}
+                    {% for child_link in link.links %}
+                      {% assign lowercase_title = child_link.title | downcase %}
+                      
+                      <!-- If title doesn't start with 'promo:', render it as a standard text column -->
+                      {% unless lowercase_title contains 'promo:' %}
                         <div class="favo-mega-column">
                           <h5 class="favo-mega-column-title">
-                            <a href="{{ link.url }}">{{ link.title }}</a>
+                            <a href="{{ child_link.url }}">{{ child_link.title }}</a>
                           </h5>
-                          {% if link.links != blank %}
+                          {% if child_link.links != blank %}
                             <ul class="favo-mega-column-list">
-                              {% for child_link in link.links %}
+                              {% for grandchild_link in child_link.links %}
                                 <li>
-                                  <a href="{{ child_link.url }}" class="favo-mega-column-link">
-                                    {{ child_link.title }}
+                                  <a href="{{ grandchild_link.url }}" class="favo-mega-column-link">
+                                    {{ grandchild_link.title }}
                                   </a>
                                 </li>
                               {% endfor %}
                             </ul>
                           {% endif %}
                         </div>
-                      {% endfor %}
-                    {% else %}
-                      <div class="favo-mega-column-error">
-                        Menu handle '<strong>{{ menu_handle }}</strong>' could not be resolved. Please create it under <em>Online Store > Navigation</em>.
-                      </div>
-                    {% endif %}
+                      {% endunless %}
+                    {% endfor %}
                   </div>
-                {% endif %}
-                
-                <!-- Side promotional cards -->
-                <div class="favo-mega-promos">
-                  {% if item.promo_image_1 != blank %}
-                    {% assign p_img_1 = item.promo_image_1.value | default: item.promo_image_1 %}
-                    <a href="{{ item.promo_url_1.value | default: item.promo_url_1 | default: '#' }}" class="favo-mega-promo-card">
-                      <div class="favo-promo-img-wrapper">
-                        <img src="{{ p_img_1 | image_url: width: 400 }}" alt="{{ item.promo_title_1.value | default: item.promo_title_1 | escape }}" loading="lazy" width="400" height="400" />
-                      </div>
-                      <span class="favo-promo-title">{{ item.promo_title_1.value | default: item.promo_title_1 }}</span>
-                    </a>
-                  {% endif %}
                   
-                  {% if item.promo_image_2 != blank %}
-                    {% assign p_img_2 = item.promo_image_2.value | default: item.promo_image_2 %}
-                    <a href="{{ item.promo_url_2.value | default: item.promo_url_2 | default: '#' }}" class="favo-mega-promo-card">
-                      <div class="favo-promo-img-wrapper">
-                        <img src="{{ p_img_2 | image_url: width: 400 }}" alt="{{ item.promo_title_2.value | default: item.promo_title_2 | escape }}" loading="lazy" width="400" height="400" />
-                      </div>
-                      <span class="favo-promo-title">{{ item.promo_title_2.value | default: item.promo_title_2 }}</span>
-                    </a>
-                  {% endif %}
+                  <!-- Promotional image banners (Level 2 Links prefixed with 'PROMO:') -->
+                  <div class="favo-mega-promos">
+                    {% for child_link in link.links %}
+                      {% assign lowercase_title = child_link.title | downcase %}
+                      
+                      {% if lowercase_title contains 'promo:' %}
+                        <!-- Clean title by stripping 'PROMO:' prefix -->
+                        {% assign promo_title = child_link.title | split: ":" | last | strip %}
+                        
+                        <!-- Retrieve featured image automatically from the linked Collection or Product -->
+                        {% assign promo_image = '' %}
+                        {% if child_link.type == 'collection_link' and child_link.object.image != blank %}
+                          {% assign promo_image = child_link.object.image %}
+                        {% elsif child_link.type == 'product_link' and child_link.object.featured_image != blank %}
+                          {% assign promo_image = child_link.object.featured_image %}
+                        {% endif %}
+                        
+                        <a href="{{ child_link.url }}" class="favo-mega-promo-card">
+                          <div class="favo-promo-img-wrapper">
+                            {% if promo_image != blank %}
+                              <img src="{{ promo_image | image_url: width: 400 }}" alt="{{ promo_title | escape }}" loading="lazy" width="400" height="400" />
+                            {% else %}
+                              <div class="favo-promo-placeholder">No Image</div>
+                            {% endif %}
+                          </div>
+                          <span class="favo-promo-title">{{ promo_title }}</span>
+                        </a>
+                      {% endif %}
+                    {% endfor %}
+                  </div>
+                  
                 </div>
-                
               </div>
-            </div>
-          {% endif %}
-          
-        </li>
-      {% endfor %}
-      
-    </ul>
-  </nav>
-</div>
+            {% endif %}
+            
+          </li>
+        {% endfor %}
+        
+      </ul>
+    </nav>
+  </div>
+{% else %}
+  <div class="favo-mega-nav-wrapper favo-nav-empty">
+    <p>Please select a navigation menu in the customization settings to display the Mega Menu.</p>
+  </div>
+{% endif %}
 
 {% schema %}
 {
   "name": "Favo Mega Navigation",
   "target": "section",
   "settings": [
+    {
+      "type": "link_list",
+      "id": "menu",
+      "label": "Select Mega Menu List"
+    },
     {
       "type": "color",
       "id": "background_color",

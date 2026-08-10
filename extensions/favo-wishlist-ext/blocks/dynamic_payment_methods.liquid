@@ -1,0 +1,450 @@
+{% comment %}
+  Dynamic Payment Methods Block
+  File: flupi-shopify-helper/extensions/favo-wishlist-ext/blocks/dynamic_payment_methods.liquid
+  Description: Renders payment method logos sorted by priority and filtered by active market (country code).
+               Handles overflow with a "+X" hover card showing additional payment logos.
+  Storage Note: Uses native Shopify SVG icons and custom uploaded images.
+                 Everything is hosted on Shopify's CDN with zero Railway storage impact.
+{% endcomment %}
+
+{%- liquid
+  assign current_country = localization.country.iso_code | upcase
+  assign logo_w = 60
+  assign logo_h = 35
+  assign max_visible = block.settings.max_visible_cards | default: 4 | plus: 0
+
+  comment
+    Capture a literal newline for robust multiline string parsing in Liquid
+  endcomment
+-%}
+{%- capture newline %}
+{% endcapture -%}
+{%- liquid
+  comment
+    Split configuration by captured newline character
+  endcomment
+  assign raw_config = block.settings.payment_config | strip
+  assign config_lines = raw_config | split: newline
+
+  assign highlighted_methods = ""
+  assign normal_methods = ""
+  assign total_applicable = 0
+
+  assign standard_keys = "visa,master,american_express,paypal,apple_pay,google_pay,shopify_pay,discover,diners_club,jcb,klarna,ideal,bancontact,giropay,sofort,eps,alipay,unionpay" | split: ","
+-%}
+
+{% for line in config_lines %}
+  {%- liquid
+    comment
+      Clean carriage returns and whitespace
+    endcomment
+    assign clean_line = line | remove: "\r" | strip
+    if clean_line == blank
+      continue
+    endif
+
+    assign parts = clean_line | split: "|"
+    if parts.size < 1
+      continue
+    endif
+
+    assign method = parts[0] | strip
+    if method == blank
+      continue
+    endif
+
+    assign countries_str = parts[1] | strip | upcase
+    assign is_highlighted = false
+    if parts[2] != blank
+      assign highlight_str = parts[2] | strip | downcase
+      if highlight_str == "true"
+        assign is_highlighted = true
+      endif
+    endif
+
+    assign is_applicable = false
+    if countries_str == blank or countries_str == "GLOBAL" or countries_str == "ALL"
+      assign is_applicable = true
+    else
+      assign countries = countries_str | split: ","
+      for country in countries
+        assign clean_country = country | strip
+        if clean_country == current_country
+          assign is_applicable = true
+          break
+        endif
+      endfor
+    endif
+  -%}
+
+  {%- if is_applicable -%}
+    {%- assign total_applicable = total_applicable | plus: 1 -%}
+    {%- assign entry = method | append: ":" | append: is_highlighted -%}
+    {%- if is_highlighted -%}
+      {%- if highlighted_methods == "" -%}
+        {%- assign highlighted_methods = entry -%}
+      {%- else -%}
+        {%- assign highlighted_methods = highlighted_methods | append: "," | append: entry -%}
+      {%- endif -%}
+    {%- else -%}
+      {%- if normal_methods == "" -%}
+        {%- assign normal_methods = entry -%}
+      {%- else -%}
+        {%- assign normal_methods = normal_methods | append: "," | append: entry -%}
+      {%- endif -%}
+    {%- endif -%}
+  {%- endif -%}
+{% endfor %}
+
+{%- liquid
+  comment
+    Merge highlighted and normal lists
+  endcomment
+  assign ordered_methods_str = ""
+  if highlighted_methods != "" and normal_methods != ""
+    assign ordered_methods_str = highlighted_methods | append: "," | append: normal_methods
+  elsif highlighted_methods != ""
+    assign ordered_methods_str = highlighted_methods
+  else
+    assign ordered_methods_str = normal_methods
+  endif
+
+  assign ordered_methods = ordered_methods_str | split: ","
+  assign remaining_count = 0
+  if total_applicable > max_visible
+    assign remaining_count = total_applicable | minus: max_visible
+  endif
+-%}
+
+<!-- CSS Styling -->
+<style>
+  .flupi-payments-section {
+    padding: 20px 0;
+    width: 100%;
+  }
+  .flupi-payments-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: left;
+  }
+  .flupi-payments-container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .flupi-payment-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 76px;
+    height: 46px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    transition: all 0.2s ease;
+    overflow: hidden;
+    padding: 4px;
+    box-sizing: border-box;
+  }
+  .flupi-payment-card:hover {
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.06);
+  }
+  .flupi-payment-card img {
+    width: auto;
+    height: auto;
+    object-fit: contain;
+  }
+  .flupi-payment-card--overflow {
+    background: #f1f5f9;
+    color: #475569;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    position: relative;
+    border-color: #cbd5e1;
+    overflow: visible; /* Prevents the hover window from being clipped */
+  }
+  .flupi-payment-card--overflow:hover {
+    background: #e2e8f0;
+  }
+  
+  /* Hover Dropdown Window */
+  .flupi-payment-hover-window {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    width: 256px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    padding: 12px;
+    z-index: 999;
+    box-sizing: border-box;
+    cursor: default;
+  }
+  
+  /* Small triangle indicator */
+  .flupi-payment-hover-window::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    right: 28px;
+    border-width: 6px;
+    border-style: solid;
+    border-color: #ffffff transparent transparent transparent;
+  }
+  .flupi-payment-hover-window::before {
+    content: '';
+    position: absolute;
+    top: 100%;
+    right: 27px;
+    border-width: 7px;
+    border-style: solid;
+    border-color: #cbd5e1 transparent transparent transparent;
+    z-index: -1;
+  }
+  
+  .flupi-payment-card--overflow:hover .flupi-payment-hover-window {
+    display: block;
+  }
+  .flupi-payment-hover-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 4px;
+    text-align: left;
+  }
+  .flupi-payment-hover-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .flupi-payment-hover-grid .flupi-payment-card {
+    width: 100%;
+    height: 40px;
+  }
+  .flupi-native-svg-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .flupi-native-svg-wrap svg {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+  }
+</style>
+
+<!-- Render Section Markup -->
+<div class="flupi-payments-section">
+  {%- if total_applicable > 0 -%}
+    <div class="flupi-payments-title">Accepted Payments ({{ current_country }})</div>
+    <div class="flupi-payments-container">
+      
+      {% comment %} 1. Render Visible Cards {% endcomment %}
+      {% for entry in ordered_methods limit: max_visible %}
+        {%- liquid
+          assign details = entry | split: ":"
+          assign method = details[0]
+          assign method_down = method | downcase
+          
+          assign is_custom = false
+          assign logo_img = blank
+          
+          if method_down == "custom1" or method_down contains "insta"
+            if block.settings.custom_logo_1 != blank
+              assign is_custom = true
+              assign logo_img = block.settings.custom_logo_1
+            endif
+          elsif method_down == "custom2" or method_down contains "vodafone" or method_down contains "vf"
+            if block.settings.custom_logo_2 != blank
+              assign is_custom = true
+              assign logo_img = block.settings.custom_logo_2
+            endif
+          elsif method_down == "custom3" or method_down contains "valu" or method_down contains "valy"
+            if block.settings.custom_logo_3 != blank
+              assign is_custom = true
+              assign logo_img = block.settings.custom_logo_3
+            endif
+          elsif method_down == "custom4" or method_down contains "fawry"
+            if block.settings.custom_logo_4 != blank
+              assign is_custom = true
+              assign logo_img = block.settings.custom_logo_4
+            endif
+          endif
+        -%}
+        <div class="flupi-payment-card" title="Pay with {{ method | replace: '_', ' ' | capitalize }}">
+          {%- if is_custom and logo_img != blank -%}
+            <img src="{{ logo_img | image_url: width: 150 }}" 
+                 alt="{{ method | replace: '_', ' ' | capitalize }}"
+                 width="{{ logo_img.width | default: logo_w }}"
+                 height="{{ logo_img.height | default: logo_h }}"
+                 style="max-width: {{ logo_w }}px; max-height: {{ logo_h }}px;">
+          {%- else -%}
+            {%- liquid
+              assign is_standard = false
+              for key in standard_keys
+                if key == method_down
+                  assign is_standard = true
+                  break
+                endif
+              endfor
+            -%}
+            {%- if is_standard -%}
+              <div class="flupi-native-svg-wrap" style="width: {{ logo_w }}px; height: {{ logo_h }}px;">
+                {{ method_down | payment_type_svg_tag }}
+              </div>
+            {%- else -%}
+              {% comment %} Fallback to file search if it's named directly {% endcomment %}
+              {%- assign file_search_name = method_down -%}
+              {%- unless file_search_name contains "." -%}
+                {%- assign file_search_name = file_search_name | append: ".png" -%}
+              {%- endunless -%}
+              <img src="{{ file_search_name | file_img_url: '150x' }}" 
+                   alt="{{ method | replace: '_', ' ' | capitalize }}"
+                   width="{{ logo_w }}"
+                   height="{{ logo_h }}"
+                   style="max-width: {{ logo_w }}px; max-height: {{ logo_h }}px;">
+            {%- endif -%}
+          {%- endif -%}
+        </div>
+      {% endfor %}
+
+      {% comment %} 2. Render Overflow Card {% endcomment %}
+      {% if remaining_count > 0 %}
+        <div class="flupi-payment-card flupi-payment-card--overflow">
+          <span>+{{ remaining_count }}</span>
+          
+          <!-- Tooltip Window -->
+          <div class="flupi-payment-hover-window">
+            <div class="flupi-payment-hover-title">More Payment Options</div>
+            <div class="flupi-payment-hover-grid">
+              {% for entry in ordered_methods offset: max_visible %}
+                {%- liquid
+                  assign details = entry | split: ":"
+                  assign method = details[0]
+                  assign method_down = method | downcase
+                  
+                  assign is_custom = false
+                  assign logo_img = blank
+                  
+                  if method_down == "custom1" or method_down contains "insta"
+                    if block.settings.custom_logo_1 != blank
+                      assign is_custom = true
+                      assign logo_img = block.settings.custom_logo_1
+                    endif
+                  elsif method_down == "custom2" or method_down contains "vodafone" or method_down contains "vf"
+                    if block.settings.custom_logo_2 != blank
+                      assign is_custom = true
+                      assign logo_img = block.settings.custom_logo_2
+                    endif
+                  elsif method_down == "custom3" or method_down contains "valu" or method_down contains "valy"
+                    if block.settings.custom_logo_3 != blank
+                      assign is_custom = true
+                      assign logo_img = block.settings.custom_logo_3
+                    endif
+                  elsif method_down == "custom4" or method_down contains "fawry"
+                    if block.settings.custom_logo_4 != blank
+                      assign is_custom = true
+                      assign logo_img = block.settings.custom_logo_4
+                    endif
+                  endif
+                -%}
+                <div class="flupi-payment-card" title="Pay with {{ method | replace: '_', ' ' | capitalize }}">
+                  {%- if is_custom and logo_img != blank -%}
+                    <img src="{{ logo_img | image_url: width: 150 }}" 
+                         alt="{{ method | replace: '_', ' ' | capitalize }}"
+                         width="{{ logo_img.width | default: logo_w }}"
+                         height="{{ logo_img.height | default: logo_h }}"
+                         style="max-width: {{ logo_w }}px; max-height: {{ logo_h }}px;">
+                  {%- else -%}
+                    {%- liquid
+                      assign is_standard = false
+                      for key in standard_keys
+                        if key == method_down
+                          assign is_standard = true
+                          break
+                        endif
+                      endfor
+                    -%}
+                    {%- if is_standard -%}
+                      <div class="flupi-native-svg-wrap" style="width: {{ logo_w }}px; height: {{ logo_h }}px;">
+                        {{ method_down | payment_type_svg_tag }}
+                      </div>
+                    {%- else -%}
+                      {%- assign file_search_name = method_down -%}
+                      {%- unless file_search_name contains "." -%}
+                        {%- assign file_search_name = file_search_name | append: ".png" -%}
+                      {%- endunless -%}
+                      <img src="{{ file_search_name | file_img_url: '150x' }}" 
+                           alt="{{ method | replace: '_', ' ' | capitalize }}"
+                           width="{{ logo_w }}"
+                           height="{{ logo_h }}"
+                           style="max-width: {{ logo_w }}px; max-height: {{ logo_h }}px;">
+                    {%- endif -%}
+                  {%- endif -%}
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+    </div>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "Dynamic Payment Methods",
+  "target": "section",
+  "settings": [
+    {
+      "type": "number",
+      "id": "max_visible_cards",
+      "label": "Max Visible Cards",
+      "default": 4
+    },
+    {
+      "type": "textarea",
+      "id": "payment_config",
+      "label": "Payment Config (Line format: method_key | countries | highlighted)",
+      "default": "visa | global | true\nmaster | global | true\npaypal | US,CA | false\napple_pay | global | true\ngoogle_pay | global | false",
+      "info": "Values: method_name | target ISOs (e.g. EG,US or global) | highlight (true/false). Custom keys match below uploaded slots (e.g. instapay matches Logo 1)."
+    },
+    {
+      "type": "image_picker",
+      "id": "custom_logo_1",
+      "label": "Instapay / Custom Logo 1"
+    },
+    {
+      "type": "image_picker",
+      "id": "custom_logo_2",
+      "label": "Vodafone Cash / Custom Logo 2"
+    },
+    {
+      "type": "image_picker",
+      "id": "custom_logo_3",
+      "label": "Valu / Custom Logo 3"
+    },
+    {
+      "type": "image_picker",
+      "id": "custom_logo_4",
+      "label": "Fawry / Custom Logo 4"
+    }
+  ]
+}
+{% endschema %}

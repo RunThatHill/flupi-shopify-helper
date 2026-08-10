@@ -1,9 +1,8 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { json } from "@remix-run/node";
 import shopify from "../shopify.server";
-import { supabase } from "../supabase.server";
+import db from "../db.server";
 
-// Helper for liquid/liquid app proxies to prevent Shopify layout wrapping
+// Helper for liquid app proxies to prevent Shopify layout wrapping
 const jsonResponse = (data: any, status = 200) => {
   return new Response(JSON.stringify(data), {
     status,
@@ -14,12 +13,36 @@ const jsonResponse = (data: any, status = 200) => {
   });
 };
 
+// Helper to query Shopify Admin GraphQL API using offline token
+const executeShopifyGraphQL = async (shop: string, query: string, variables: any = {}) => {
+  // 1. Find the offline session to get the token
+  const offlineSession = await db.session.findFirst({
+    where: { shop },
+  });
+  const token = offlineSession?.accessToken || process.env.SHOPIFY_ACCESS_TOKEN || "";
+  const resolvedShop = offlineSession?.shop || process.env.SHOPIFY_SHOP || shop;
+
+  if (!token) {
+    throw new Error(`No active access token found for shop: ${shop}`);
+  }
+
+  const endpoint = `https://${resolvedShop}/admin/api/2026-04/graphql.json`;
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Shopify-Access-Token": token,
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+  return response.json();
+};
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   try {
-    const { session, admin } = await shopify.authenticate.public.appProxy(request);
+    const { session } = await shopify.authenticate.public.appProxy(request);
     const url = new URL(request.url);
     
-    // Shopify automatically appends logged_in_customer_id parameter (numeric format)
     const customerIdRaw = url.searchParams.get("logged_in_customer_id");
     const shop = url.searchParams.get("shop") || session?.shop || "";
     const fullDetails = url.searchParams.get("full") === "true";
@@ -31,73 +54,67 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
     const customerId = `gid://shopify/Customer/${customerIdRaw}`;
 
-    if (!supabase) {
-      console.warn("[WISHLIST] Supabase client offline. Using mock database fallback.");
-      return jsonResponse({ success: true, wishlist: [], isMock: true });
-    }
+    // 2. Fetch the customer metafield value containing the product ID list
+    const getMetafieldQuery = `
+      query GetCustomerWishlist($id: ID!) {
+        customer(id: $id) {
+          metafield(namespace: "favo", key: "wishlist") {
+            value
+          }
+        }
+      }
+    `;
 
-    const { data: items, error } = await supabase
-      .from("shopify_wishlist_items")
-      .select("product_id, variant_id")
-      .eq("customer_id", customerId)
-      .eq("shop", shop);
-
-    if (error) {
-      console.error("[WISHLIST] Error fetching wishlist:", error);
-      return jsonResponse({ error: error.message }, 500);
-    }
-
-    // If storefront requests full details (for Wishlist Page grid rendering)
-    if (fullDetails && items.length > 0 && admin) {
-      const productIds = items.map(item => item.product_id);
-      
+    const metaResult = await executeShopifyGraphQL(shop, getMetafieldQuery, { id: customerId });
+    const metafieldValue = metaResult.data?.customer?.metafield?.value;
+    
+    let wishlistProductIds: string[] = [];
+    if (metafieldValue) {
       try {
-        // Query Shopify Admin GraphQL API for the product information in batch (compatible with all API versions)
-        const response = await admin.graphql(
-          `#graphql
-          query GetWishlistProducts($ids: [ID!]!) {
-            shop {
-              currencyCode
-            }
-            nodes(ids: $ids) {
-              ... on Product {
-                id
-                title
-                handle
-                featuredImage {
-                  url
-                  altText
-                }
-                variants(first: 1) {
-                  edges {
-                    node {
-                      id
-                      title
-                      price
-                    }
+        wishlistProductIds = JSON.parse(metafieldValue);
+      } catch (e) {
+        console.error("[WISHLIST] Failed to parse wishlist metafield JSON:", e);
+      }
+    }
+
+    // 3. If grid detail rendering is requested, fetch product details
+    if (fullDetails && wishlistProductIds.length > 0) {
+      const getProductsQuery = `
+        query GetWishlistProducts($ids: [ID!]!) {
+          shop {
+            currencyCode
+          }
+          nodes(ids: $ids) {
+            ... on Product {
+              id
+              title
+              handle
+              vendor
+              availableForSale
+              featuredImage {
+                url
+                altText
+              }
+              variants(first: 1) {
+                edges {
+                  node {
+                    id
+                    title
+                    price
+                    compareAtPrice
                   }
                 }
               }
             }
-          }`,
-          {
-            variables: {
-              ids: productIds,
-            },
           }
-        );
-
-        const resJson = await response.json();
-        
-        // Log query errors if any
-        if (resJson.errors) {
-          console.error("[WISHLIST] Shopify GraphQL errors:", resJson.errors);
         }
+      `;
 
-        const currencyCode = resJson.data?.shop?.currencyCode || "EGP";
-        const nodes = resJson.data?.nodes || [];
-        
-        // Filter out null nodes (products deleted from Shopify)
+      try {
+        const prodResult = await executeShopifyGraphQL(shop, getProductsQuery, { ids: wishlistProductIds });
+        const currencyCode = prodResult.data?.shop?.currencyCode || "EGP";
+        const nodes = prodResult.data?.nodes || [];
+
         const productsMap = nodes
           .filter((node: any) => node !== null && node.id)
           .reduce((acc: any, node: any) => {
@@ -105,24 +122,27 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
             acc[node.id] = {
               title: node.title,
               handle: node.handle,
+              vendor: node.vendor || "",
+              availableForSale: node.availableForSale,
               imageUrl: node.featuredImage?.url || "",
               imageAlt: node.featuredImage?.altText || node.title,
               price: firstVariant?.price || "0.00",
+              compareAtPrice: firstVariant?.compareAtPrice || null,
               currencyCode: currencyCode,
               firstVariantId: firstVariant?.id || ""
             };
             return acc;
           }, {});
 
-        // Merge DB records with Shopify details
-        const enrichedWishlist = items
-          .map(item => {
-            const shopifyDetails = productsMap[item.product_id];
-            if (!shopifyDetails) return null; // Filter out products deleted in admin
+        // Build sorted wishlist array
+        const enrichedWishlist = wishlistProductIds
+          .map(id => {
+            const details = productsMap[id];
+            if (!details) return null;
             return {
-              productId: item.product_id,
-              variantId: item.variant_id || shopifyDetails.firstVariantId,
-              ...shopifyDetails
+              productId: id,
+              variantId: details.firstVariantId,
+              ...details
             };
           })
           .filter(item => item !== null);
@@ -133,22 +153,19 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           isGuest: false
         });
       } catch (err: any) {
-        console.error("[WISHLIST] Failed to fetch product details from Shopify GraphQL:", err);
+        console.error("[WISHLIST] GraphQL details fetch failed:", err);
       }
     }
 
-    // Default: Return simple product IDs
+    // Default: return simple product IDs list
     return jsonResponse({
       success: true,
-      wishlist: items.map(item => ({
-        productId: item.product_id,
-        variantId: item.variant_id
-      })),
+      wishlist: wishlistProductIds.map(id => ({ productId: id })),
       isGuest: false
     });
 
   } catch (error: any) {
-    console.error("[WISHLIST ERROR] Loader authentication failed:", error);
+    console.error("[WISHLIST ERROR] Loader proxy authentication failed:", error);
     return jsonResponse({ error: "Unauthorized request signature" }, 401);
   }
 };
@@ -161,101 +178,112 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const shop = url.searchParams.get("shop") || session?.shop || "";
     
     if (!customerIdRaw) {
-      return jsonResponse({ error: "Customer must be logged in to sync wishlist with account" }, 400);
+      return jsonResponse({ error: "Customer session not active" }, 400);
     }
 
     const customerId = `gid://shopify/Customer/${customerIdRaw}`;
     const body = await request.json().catch(() => ({}));
-    const { action, productId, variantId, items } = body;
+    const { action, productId, items } = body;
 
-    if (!supabase) {
-      return jsonResponse({ error: "Supabase client is offline" }, 503);
+    // 1. Fetch current wishlist metafield from Shopify
+    const getMetafieldQuery = `
+      query GetCustomerWishlist($id: ID!) {
+        customer(id: $id) {
+          metafield(namespace: "favo", key: "wishlist") {
+            value
+          }
+        }
+      }
+    `;
+
+    const metaResult = await executeShopifyGraphQL(shop, getMetafieldQuery, { id: customerId });
+    const metafieldValue = metaResult.data?.customer?.metafield?.value;
+    
+    let wishlistProductIds: string[] = [];
+    if (metafieldValue) {
+      try {
+        wishlistProductIds = JSON.parse(metafieldValue);
+      } catch (e) {
+        wishlistProductIds = [];
+      }
     }
 
-    // --- CASE A: Sync items (from localStorage to Database on login) ---
+    // 2. Perform requested operation on wishlist list
+    let modified = false;
+
     if (action === "sync") {
-      if (!Array.isArray(items)) {
-        return jsonResponse({ error: "Sync action expects an array of items" }, 400);
+      // Sync guest items array
+      if (Array.isArray(items)) {
+        const localIds = items.map((i: any) => i.productId).filter((id: any) => typeof id === "string" && id.startsWith("gid://"));
+        const combined = [...wishlistProductIds, ...localIds];
+        // Keep unique values
+        const uniqueIds = Array.from(new Set(combined));
+        if (uniqueIds.length !== wishlistProductIds.length) {
+          wishlistProductIds = uniqueIds;
+          modified = true;
+        }
       }
-
-      // Perform upsert for each item in local storage
-      const upsertData = items.map((item: any) => ({
-        customer_id: customerId,
-        product_id: item.productId,
-        variant_id: item.variantId || null,
-        shop: shop
-      }));
-
-      if (upsertData.length === 0) {
-        return jsonResponse({ success: true, message: "No items to sync" });
+    } else if (request.method === "POST" && action !== "delete") {
+      // Add product
+      if (productId && !wishlistProductIds.includes(productId)) {
+        wishlistProductIds.push(productId);
+        modified = true;
       }
-
-      const { error } = await supabase
-        .from("shopify_wishlist_items")
-        .upsert(upsertData, { onConflict: "customer_id,product_id,variant_id" });
-
-      if (error) {
-        console.error("[WISHLIST] Sync failed:", error);
-        return jsonResponse({ error: error.message }, 500);
+    } else if (request.method === "DELETE" || action === "delete") {
+      // Remove product
+      if (productId && wishlistProductIds.includes(productId)) {
+        wishlistProductIds = wishlistProductIds.filter(id => id !== productId);
+        modified = true;
       }
-
-      return jsonResponse({ success: true, message: "Wishlist synced successfully" });
     }
 
-    // --- CASE B: Add item ---
-    if (request.method === "POST" && action !== "delete") {
-      if (!productId) {
-        return jsonResponse({ error: "Missing productId" }, 400);
+    // 3. If changed, push update back to customer metafield on Shopify
+    if (modified || action === "sync") {
+      const updateMetafieldMutation = `
+        mutation customerUpdate($input: CustomerInput!) {
+          customerUpdate(input: $input) {
+            customer {
+              id
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+      `;
+
+      const variables = {
+        input: {
+          id: customerId,
+          metafields: [
+            {
+              namespace: "favo",
+              key: "wishlist",
+              value: JSON.stringify(wishlistProductIds),
+              type: "json"
+            }
+          ]
+        }
+      };
+
+      const mutationResult = await executeShopifyGraphQL(shop, updateMetafieldMutation, variables);
+      
+      const errors = mutationResult.data?.customerUpdate?.userErrors;
+      if (errors && errors.length > 0) {
+        console.error("[WISHLIST] customerUpdate errors:", errors);
+        return jsonResponse({ error: errors[0].message }, 500);
       }
-
-      const { error } = await supabase
-        .from("shopify_wishlist_items")
-        .upsert({
-          customer_id: customerId,
-          product_id: productId,
-          variant_id: variantId || null,
-          shop: shop
-        }, { onConflict: "customer_id,product_id,variant_id" });
-
-      if (error) {
-        console.error("[WISHLIST] Add failed:", error);
-        return jsonResponse({ error: error.message }, 500);
-      }
-
-      return jsonResponse({ success: true, message: "Item added to wishlist" });
     }
 
-    // --- CASE C: Remove item ---
-    if (request.method === "DELETE" || action === "delete") {
-      if (!productId) {
-        return jsonResponse({ error: "Missing productId" }, 400);
-      }
-
-      const query = supabase
-        .from("shopify_wishlist_items")
-        .delete()
-        .eq("customer_id", customerId)
-        .eq("product_id", productId)
-        .eq("shop", shop);
-
-      if (variantId) {
-        query.eq("variant_id", variantId);
-      }
-
-      const { error } = await query;
-
-      if (error) {
-        console.error("[WISHLIST] Delete failed:", error);
-        return jsonResponse({ error: error.message }, 500);
-      }
-
-      return jsonResponse({ success: true, message: "Item removed from wishlist" });
-    }
-
-    return jsonResponse({ error: "Method or action not supported" }, 400);
+    return jsonResponse({
+      success: true,
+      wishlist: wishlistProductIds.map(id => ({ productId: id })),
+      message: "Operation completed successfully"
+    });
 
   } catch (error: any) {
-    console.error("[WISHLIST ERROR] Action authentication failed:", error);
+    console.error("[WISHLIST ERROR] Action proxy authentication failed:", error);
     return jsonResponse({ error: "Unauthorized request signature" }, 401);
   }
 };

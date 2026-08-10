@@ -2,22 +2,80 @@
      data-customer-id="{% if customer %}gid://shopify/Customer/{{ customer.id }}{% endif %}"
      data-shop="{{ shop.permanent_domain }}"
      data-heart-icon-url="{{ 'heart.png' | asset_url }}">
+     
   <div class="favo-wishlist-header">
-    <h1 class="favo-wishlist-title">{{ section.settings.page_title | default: "My Wishlist" }}</h1>
-    <p class="favo-wishlist-count-text"><span id="favo-wishlist-count">0</span> items saved</p>
+    <h1 class="favo-wishlist-title">
+      {% if customer.first_name != blank %}
+        {{ customer.first_name | escape }}'s Wish List
+      {% else %}
+        My Wish List
+      {% endif %}
+    </h1>
+    <p class="favo-wishlist-subtitle">Keep track of all your favorite items here and add them to your Shopping Bag to purchase later</p>
   </div>
   
+  <!-- OUTNET Stock Status Tabs -->
+  <div class="favo-wishlist-tabs-bar">
+    <div class="favo-wishlist-tabs">
+      <button type="button" class="favo-tab-btn is-active" data-tab="in-stock">In Stock</button>
+      <button type="button" class="favo-tab-btn" data-tab="sold-out">Sold Out</button>
+      <button type="button" class="favo-tab-btn" data-tab="unavailable">Unavailable in location</button>
+    </div>
+    <button type="button" class="favo-share-btn" aria-label="Share wishlist">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true">
+        <circle cx="18" cy="5" r="3"></circle>
+        <circle cx="6" cy="12" r="3"></circle>
+        <circle cx="18" cy="19" r="3"></circle>
+        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+      </svg>
+    </button>
+  </div>
+
+  <!-- OUTNET Filter & Sort Bar -->
+  <div class="favo-wishlist-filter-bar">
+    <div class="favo-wishlist-genders">
+      <label class="favo-filter-checkbox-label">
+        <input type="checkbox" class="favo-filter-checkbox" value="women" checked />
+        <span class="favo-checkbox-custom"></span>
+        Women
+      </label>
+      <label class="favo-filter-checkbox-label">
+        <input type="checkbox" class="favo-filter-checkbox" value="men" checked />
+        <span class="favo-checkbox-custom"></span>
+        Men
+      </label>
+    </div>
+    
+    <div class="favo-wishlist-count-center">
+      <span id="favo-wishlist-count">0</span> Items
+    </div>
+    
+    <div class="favo-wishlist-sorting">
+      <select id="favo-wishlist-sort-select" class="favo-sort-select" aria-label="Sort products">
+        <option value="recent">Recently added</option>
+        <option value="price-asc">Price: Low to High</option>
+        <option value="price-desc">Price: High to Low</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Loading State -->
   <div class="favo-wishlist-loading">
     <div class="favo-spinner"></div>
   </div>
 
+  <!-- Product Cards Grid -->
   <div class="favo-wishlist-grid favo-hidden" id="favo-wishlist-grid">
-    <!-- Will be dynamically populated with wishlisted products via javascript -->
+    <!-- Populated dynamically via javascript -->
   </div>
 
+  <!-- Empty State -->
   <div class="favo-wishlist-empty-state favo-hidden" id="favo-wishlist-empty">
     <div class="favo-empty-icon-wrapper">
-      <img src="{{ 'heart.png' | asset_url }}" class="favo-empty-heart-img" alt="Empty Heart" width="64" height="64" />
+      <svg viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" width="64" height="64" aria-hidden="true">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+      </svg>
     </div>
     <h2 class="favo-empty-title">Your wishlist is empty</h2>
     <p class="favo-empty-subtitle">Save items you love here to keep track of them!</p>
@@ -29,15 +87,6 @@
 {
   "name": "Favo Wishlist Page",
   "target": "section",
-  "stylesheet": "wishlist.css",
-  "javascript": "wishlist.js",
-  "settings": [
-    {
-      "type": "text",
-      "id": "page_title",
-      "label": "Page Title",
-      "default": "My Wishlist"
-    }
-  ]
+  "settings": []
 }
 {% endschema %}

@@ -92,7 +92,7 @@
   }
 }
 
-/* Wishlist Page styling */
+/* Wishlist Page styling (THE OUTNET) */
 .favo-wishlist-page-container {
   max-width: 1200px;
   margin: 40px auto;
@@ -102,25 +102,169 @@
 }
 
 .favo-wishlist-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  border-bottom: 1px solid var(--favo-wishlist-border-color);
-  padding-bottom: 15px;
   margin-bottom: 30px;
 }
 
 .favo-wishlist-title {
-  font-size: 2.2rem;
-  margin: 0;
-  font-weight: 600;
-  color: var(--favo-wishlist-primary);
+  font-size: 26px;
+  margin: 0 0 10px 0;
+  font-weight: 500;
+  color: #121212;
+  text-align: center;
+  text-transform: capitalize;
+  letter-spacing: 0.5px;
 }
 
-.favo-wishlist-count-text {
-  font-size: 1.1rem;
-  color: var(--favo-wishlist-text-muted);
+.favo-wishlist-subtitle {
+  font-size: 14px;
+  color: #707070;
+  text-align: center;
   margin: 0;
+  line-height: 1.5;
+}
+
+/* OUTNET Tabs Bar */
+.favo-wishlist-tabs-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e5e5e5;
+  padding-bottom: 8px;
+  margin-bottom: 15px;
+}
+
+.favo-wishlist-tabs {
+  display: flex;
+  gap: 24px;
+}
+
+.favo-tab-btn {
+  border: none;
+  background: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: #707070;
+  padding: 8px 0;
+  cursor: pointer;
+  position: relative;
+  font-family: inherit;
+  transition: color 0.2s ease;
+}
+
+.favo-tab-btn:hover {
+  color: #121212;
+}
+
+.favo-tab-btn.is-active {
+  color: #121212;
+}
+
+.favo-tab-btn.is-active::after {
+  content: '';
+  position: absolute;
+  bottom: -9px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #121212;
+}
+
+.favo-share-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #707070;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.favo-share-btn:hover {
+  color: #121212;
+  background-color: #f5f5f5;
+}
+
+/* OUTNET Filters & Sorting Bar */
+.favo-wishlist-filter-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e5e5;
+  margin-bottom: 30px;
+}
+
+.favo-wishlist-genders {
+  display: flex;
+  gap: 20px;
+}
+
+.favo-filter-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: #121212;
+  font-weight: 500;
+  font-size: 14px;
+  user-select: none;
+}
+
+.favo-filter-checkbox {
+  display: none;
+}
+
+.favo-checkbox-custom {
+  width: 18px;
+  height: 18px;
+  border: 1px solid #707070;
+  position: relative;
+  display: inline-block;
+  box-sizing: border-box;
+  background: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.favo-filter-checkbox:checked + .favo-checkbox-custom {
+  background: #121212;
+  border-color: #121212;
+}
+
+.favo-filter-checkbox:checked + .favo-checkbox-custom::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.favo-wishlist-count-center {
+  color: #707070;
+  font-size: 14px;
+}
+
+.favo-sort-select {
+  border: 1px solid #e5e5e5;
+  padding: 6px 30px 6px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #121212;
+  background: #ffffff;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23707070' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 16px;
 }
 
 /* Spinner */
@@ -134,47 +278,38 @@
 .favo-spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(0, 0, 0, 0.1);
+  border: 2px solid rgba(0, 0, 0, 0.08);
   border-radius: 50%;
-  border-top-color: var(--favo-wishlist-primary);
-  animation: favo-spin 0.8s ease-in-out infinite;
+  border-top-color: #121212;
+  animation: favo-spin 0.8s linear infinite;
 }
 
 @keyframes favo-spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
 /* Grid Layout */
 .favo-wishlist-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 30px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 30px 24px;
+  margin-bottom: 50px;
 }
 
 .favo-hidden {
   display: none !important;
 }
 
-/* Product Card */
+/* OUTNET Product Card */
 .favo-product-card {
-  border: 1px solid var(--favo-wishlist-border-color);
-  border-radius: var(--favo-wishlist-radius);
-  overflow: hidden;
-  background: #ffffff;
   display: flex;
   flex-direction: column;
   position: relative;
-  transition: var(--favo-wishlist-transition);
+  background: #ffffff;
+  overflow: visible;
 }
 
-.favo-product-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 20px rgba(0,0,0,0.05);
-}
-
-/* Remove Button overlay */
+/* OUTNET 'X' Remove Button */
 .favo-remove-btn {
   position: absolute;
   top: 12px;
@@ -182,48 +317,36 @@
   background: #ffffff;
   border: none;
   border-radius: 50%;
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
   z-index: 10;
-  transition: var(--favo-wishlist-transition);
+  transition: transform 0.2s ease;
+  color: #121212;
 }
 
 .favo-remove-btn:hover {
-  transform: scale(1.1);
-  background: #fbfbfb;
+  transform: scale(1.08);
 }
 
-.favo-remove-btn .favo-heart-img {
-  width: 18px !important;
-  height: 18px !important;
-  max-width: 18px !important;
-  max-height: 18px !important;
-  filter: none;
-  opacity: 1;
+.favo-remove-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2px;
 }
 
-.favo-remove-btn:hover .favo-heart-img {
-  animation: favo-heart-break 0.4s ease forwards;
-}
-
-@keyframes favo-heart-break {
-  0% { transform: scale(1); }
-  50% { transform: scale(0.85) rotate(-10deg); }
-  100% { transform: scale(1); }
-}
-
-/* Product Image link */
+/* Image container format */
 .favo-product-image-link {
   display: block;
   position: relative;
-  padding-top: 100%; /* 1:1 Aspect Ratio */
-  background-color: #f7f7f7;
+  padding-top: 130%; /* Vertical model aspect ratio */
+  background-color: #f9f9f9;
   overflow: hidden;
+  margin-bottom: 12px;
 }
 
 .favo-product-img {
@@ -233,45 +356,75 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: var(--favo-wishlist-transition);
+  transition: transform 0.35s ease;
 }
 
 .favo-product-card:hover .favo-product-img {
-  transform: scale(1.04);
+  transform: scale(1.03);
 }
 
-/* Product Content */
+/* Card details (THE OUTNET typography) */
 .favo-product-info {
-  padding: 16px;
   display: flex;
   flex-direction: column;
   flex-grow: 1;
 }
 
+.favo-product-brand {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #121212;
+  margin: 0 0 4px 0;
+  letter-spacing: 0.5px;
+}
+
 .favo-product-title-link {
   text-decoration: none;
-  color: var(--favo-wishlist-primary);
-  margin-bottom: 8px;
+  color: #121212;
+  margin-bottom: 6px;
 }
 
 .favo-product-title {
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 400;
   line-height: 1.4;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: #121212;
 }
 
-.favo-product-price {
-  font-size: 15px;
-  font-weight: 500;
-  margin: 0 0 16px 0;
-  color: var(--favo-wishlist-primary);
+.favo-product-size {
+  font-size: 12px;
+  color: #707070;
+  margin: 0 0 8px 0;
 }
 
-/* Add To Cart Form Button */
+.favo-product-prices {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+
+.favo-price-sale {
+  color: #e11d48;
+  font-weight: 600;
+}
+
+.favo-price-compare {
+  color: #707070;
+  text-decoration: line-through;
+  font-size: 12px;
+}
+
+.favo-price-discount {
+  color: #e11d48;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Add To Bag Flat Button */
 .favo-add-to-cart-form {
   margin-top: auto;
   width: 100%;
@@ -279,20 +432,20 @@
 
 .favo-add-to-cart-btn {
   width: 100%;
-  background: var(--favo-wishlist-primary);
+  background: #121212;
   color: #ffffff;
   border: none;
-  border-radius: var(--favo-wishlist-radius);
-  padding: 10px 16px;
-  font-size: 14px;
-  font-weight: 500;
+  padding: 11px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   cursor: pointer;
-  transition: var(--favo-wishlist-transition);
+  transition: background-color 0.2s ease;
 }
 
 .favo-add-to-cart-btn:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
+  background-color: #333333;
 }
 
 /* Empty State */
@@ -303,81 +456,187 @@
 
 .favo-empty-icon-wrapper {
   margin-bottom: 20px;
-}
-
-.favo-empty-heart-img {
-  filter: grayscale(100%) opacity(0.3);
-  animation: favo-pulse 2s infinite ease-in-out;
-}
-
-@keyframes favo-pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
+  display: flex;
+  justify-content: center;
 }
 
 .favo-empty-title {
   font-size: 1.8rem;
   font-weight: 600;
   margin-bottom: 10px;
-  color: var(--favo-wishlist-primary);
+  color: #121212;
 }
 
 .favo-empty-subtitle {
-  color: var(--favo-wishlist-text-muted);
+  color: #707070;
   font-size: 1.1rem;
   margin-bottom: 30px;
 }
 
 .favo-continue-shopping-btn {
   display: inline-block;
-  background-color: var(--favo-wishlist-primary);
+  background-color: #121212;
   color: #ffffff;
   text-decoration: none;
   padding: 12px 30px;
-  font-weight: 500;
-  border-radius: var(--favo-wishlist-radius);
-  transition: var(--favo-wishlist-transition);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  transition: background-color 0.2s ease;
 }
 
 .favo-continue-shopping-btn:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
+  background-color: #333333;
+}
+
+/* Grid Card Heart Overlay Buttons */
+.favo-card-heart-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: #ffffff;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.favo-card-heart-btn:hover {
+  transform: scale(1.06);
+  background-color: #fbfbfb;
+}
+
+.favo-heart-svg {
+  width: 18px;
+  height: 18px;
+  color: #121212;
+  fill: none;
+  stroke-width: 2px;
+  transition: fill 0.2s ease, color 0.2s ease;
+}
+
+.favo-card-heart-btn.is-active .favo-heart-svg {
+  color: #e11d48;
+  fill: #e11d48;
+}
+
+/* Header Live Heart Badge */
+.favo-header-heart-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 44px;
+  height: 44px;
+  color: #121212;
+  transition: opacity 0.2s ease;
+  margin-right: 4px;
+}
+
+.favo-header-heart-link:hover {
+  opacity: 0.8;
+}
+
+.favo-header-heart-link svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 2px;
+}
+
+.favo-header-heart-count {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: #e11d48;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #ffffff;
+  box-sizing: border-box;
 }
 
 /* Mobile responsive fixes */
+@media (max-width: 991px) {
+  .favo-wishlist-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 @media (max-width: 767px) {
-  .favo-wishlist-header {
+  .favo-wishlist-tabs-bar {
+    flex-direction: row;
+    align-items: center;
+  }
+  
+  .favo-wishlist-tabs {
+    gap: 16px;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 2px;
+  }
+  
+  .favo-tab-btn {
+    font-size: 13px;
+  }
+
+  .favo-wishlist-filter-bar {
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
     align-items: flex-start;
   }
   
+  .favo-wishlist-count-center {
+    order: -1;
+    font-weight: 600;
+  }
+
+  .favo-wishlist-sorting {
+    width: 100%;
+  }
+
+  .favo-sort-select {
+    width: 100%;
+  }
+
   .favo-wishlist-title {
-    font-size: 1.8rem;
+    font-size: 22px;
   }
   
   .favo-wishlist-grid {
-    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-    gap: 15px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px 12px;
   }
   
-  .favo-product-info {
-    padding: 12px;
+  .favo-product-brand {
+    font-size: 12px;
   }
   
   .favo-product-title {
-    font-size: 14px;
+    font-size: 12px;
   }
   
-  .favo-product-price {
-    font-size: 13px;
-    margin-bottom: 12px;
+  .favo-product-prices {
+    font-size: 12px;
   }
   
   .favo-add-to-cart-btn {
     font-size: 12px;
-    padding: 8px 12px;
+    padding: 9px 12px;
   }
 }
 
@@ -397,10 +656,11 @@
   background: #121212 !important;
   color: #ffffff !important;
   padding: 12px 24px !important;
-  border-radius: var(--favo-wishlist-radius) !important;
   font-family: inherit !important;
-  font-size: 14px !important;
-  font-weight: 500 !important;
+  font-size: 13px !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
   display: flex !important;
   align-items: center !important;
@@ -428,4 +688,5 @@
     justify-content: center !important;
   }
 }
+
 

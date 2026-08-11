@@ -1,0 +1,319 @@
+{% comment %}
+  Favo Utility Bar - Outnet Aesthetic Top Header Bar
+{% endcomment %}
+
+<style>
+  /* Auto-hide Shopify default header account login icon to avoid duplicates */
+  .header__icon--account,
+  .header__icon[href*="/account"],
+  a[href^="/account"]:not(.favo-utility-account-link):not(.favo-account-card):not(.favo-sidebar-link):not(.favo-account-signout) {
+    display: none !important;
+  }
+
+  /* Utility Bar Styles */
+  .favo-utility-bar {
+    width: 100%;
+    background-color: {{ block.settings.background_color | default: '#f6f6f6' }};
+    border-bottom: 1px solid #e5e5e5;
+    font-family: inherit;
+    font-size: 11px;
+    color: {{ block.settings.text_color | default: '#505050' }};
+    z-index: 999;
+    position: relative;
+  }
+
+  .favo-utility-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    height: 36px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-sizing: border-box;
+  }
+
+  /* Left column - Customer Greeting & Localization selector */
+  .favo-utility-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .favo-utility-account-link {
+    text-decoration: none;
+    color: inherit;
+    font-weight: 500;
+    transition: color 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .favo-utility-account-link:hover {
+    color: #121212;
+  }
+
+  .favo-utility-account-link svg {
+    margin-right: 2px;
+  }
+
+  .favo-utility-separator {
+    color: #d1d1d1;
+    font-weight: 300;
+  }
+
+  /* Localization Form & Dropdown */
+  .favo-utility-localization {
+    position: relative;
+    display: inline-block;
+  }
+
+  .favo-localization-trigger {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-family: inherit;
+    font-size: 11px;
+    color: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.2s ease;
+  }
+
+  .favo-localization-trigger:hover {
+    color: #121212;
+  }
+
+  .favo-localization-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 6px;
+    background-color: #ffffff;
+    border: 1px solid #e5e5e5;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border-radius: 2px;
+    padding: 8px 0;
+    z-index: 100000;
+    min-width: 160px;
+    display: none;
+  }
+
+  .favo-localization-dropdown.active {
+    display: block;
+  }
+
+  .favo-localization-option {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 8px 16px;
+    font-family: inherit;
+    font-size: 11px;
+    color: #505050;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .favo-localization-option:hover {
+    background-color: #f6f6f6;
+    color: #121212;
+  }
+
+  .favo-localization-option.selected {
+    font-weight: 600;
+    color: #121212;
+  }
+
+  /* Right column - Menu Links */
+  .favo-utility-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .favo-utility-link {
+    text-decoration: none;
+    color: inherit;
+    transition: color 0.2s ease;
+    font-weight: 500;
+  }
+
+  .favo-utility-link:hover {
+    color: #121212;
+  }
+
+  /* Hidden Native form */
+  .favo-hidden-form {
+    display: none !important;
+  }
+</style>
+
+<div class="favo-utility-bar" id="favo-utility-bar-root">
+  <div class="favo-utility-inner">
+    
+    <!-- Left column: Profile login & Region -->
+    <div class="favo-utility-left">
+      {% if customer %}
+        <a href="/pages/account" class="favo-utility-account-link">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 256 256" style="margin-top: -1px;">
+            <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24ZM74.08,197.85a64,64,0,0,1,107.84,0,87.82,87.82,0,0,1-107.84,0ZM128,120a32,32,0,1,1,32-32A32,32,0,0,1,128,120Zm56.09,65.23a80,80,0,0,0-112.18,0,88,88,0,1,1,112.18,0Z"></path>
+          </svg>
+          Hi, {{ customer.first_name }}
+        </a>
+      {% else %}
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <a href="/account/login" class="favo-utility-account-link">Sign In</a>
+          <span class="favo-utility-separator">/</span>
+          <a href="/account/register" class="favo-utility-account-link">Register</a>
+        </div>
+      {% endif %}
+
+      <span class="favo-utility-separator">|</span>
+
+      <!-- Localization Selector Dropdown -->
+      <div class="favo-utility-localization">
+        <button type="button" class="favo-localization-trigger" id="favo-localization-btn">
+          <span id="favo-country-flag"></span>
+          <span id="favo-country-label">{{ localization.language.endonym_name }} / {{ localization.country.name }}</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="currentColor" viewBox="0 0 256 256" style="margin-top: 1px;">
+            <path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80a8,8,0,0,1,11.32-11.32L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"></path>
+          </svg>
+        </button>
+
+        <div class="favo-localization-dropdown" id="favo-localization-menu">
+          {%- for country in localization.available_countries -%}
+            <button type="button" 
+                    class="favo-localization-option {% if country.iso_code == localization.country.iso_code %}selected{% endif %}" 
+                    data-value="{{ country.iso_code }}"
+                    data-iso="{{ country.iso_code }}">
+              <span class="favo-flag-placeholder" data-iso-code="{{ country.iso_code }}"></span>
+              {{ country.name }} ({{ country.currency.iso_code }} {{ country.currency.symbol }})
+            </button>
+          {%- endfor -%}
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column: Dynamic Menu Links -->
+    <div class="favo-utility-right">
+      {%- if block.settings.menu != blank -%}
+        {%- for link in linklists[block.settings.menu].links -%}
+          <a href="{{ link.url }}" class="favo-utility-link">{{ link.title }}</a>
+          {%- unless forloop.last -%}
+            <span class="favo-utility-separator">|</span>
+          {%- endunless -%}
+        {%- endfor -%}
+      {%- else -%}
+        <!-- Fallback static link list -->
+        <a href="/pages/track-order" class="favo-utility-link">Track Your Order</a>
+        <span class="favo-utility-separator">|</span>
+        <a href="/pages/customer-care" class="favo-utility-link">Customer Care</a>
+        <span class="favo-utility-separator">|</span>
+        <a href="/pages/delivery" class="favo-utility-link">Delivery</a>
+        <span class="favo-utility-separator">|</span>
+        <a href="/pages/returns" class="favo-utility-link">Returns</a>
+      {%- endif -%}
+    </div>
+
+  </div>
+</div>
+
+{%- comment -%}
+  Hidden Shopify Native Form to submit country/region changes
+{%- endcomment -%}
+{%- form 'localization', id: 'FavoUtilityCountryForm', class: 'favo-hidden-form' -%}
+  <input type="hidden" name="country_code" id="FavoUtilityCountryCode" value="{{ localization.country.iso_code }}">
+{%- endform -%}
+
+<script>
+  (function() {
+    // Dynamic ISO to Flag Emoji converter
+    function getFlagEmoji(countryCode) {
+      if (!countryCode) return '';
+      const codePoints = countryCode
+        .toUpperCase()
+        .split('')
+        .map(char => 127397 + char.charCodeAt(0));
+      return String.fromCodePoint(...codePoints);
+    }
+
+    // Set trigger flag emoji
+    const currentIso = "{{ localization.country.iso_code }}";
+    const triggerFlag = document.getElementById("favo-country-flag");
+    if (triggerFlag) {
+      triggerFlag.textContent = getFlagEmoji(currentIso);
+    }
+
+    // Set option flag emojis
+    document.querySelectorAll(".favo-flag-placeholder").forEach(span => {
+      const iso = span.dataset.isoCode;
+      span.textContent = getFlagEmoji(iso);
+    });
+
+    // Dropdown toggle logic
+    const btn = document.getElementById("favo-localization-btn");
+    const menu = document.getElementById("favo-localization-menu");
+
+    if (btn && menu) {
+      btn.addEventListener("click", function(e) {
+        e.stopPropagation();
+        menu.classList.toggle("active");
+      });
+
+      document.addEventListener("click", function() {
+        menu.classList.remove("active");
+      });
+    }
+
+    // Localization submission logic
+    const formCodeInput = document.getElementById("FavoUtilityCountryCode");
+    const form = document.getElementById("FavoUtilityCountryForm");
+
+    document.querySelectorAll(".favo-localization-option").forEach(option => {
+      option.addEventListener("click", function() {
+        const selectedCode = this.dataset.value;
+        if (formCodeInput && form && selectedCode) {
+          formCodeInput.value = selectedCode;
+          form.submit();
+        }
+      });
+    });
+
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Favo Utility Bar",
+  "target": "section",
+  "settings": [
+    {
+      "type": "link_list",
+      "id": "menu",
+      "label": "Select Right-Side Menu"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Background Color",
+      "default": "#f6f6f6"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text Color",
+      "default": "#505050"
+    }
+  ]
+}
+{% endschema %}

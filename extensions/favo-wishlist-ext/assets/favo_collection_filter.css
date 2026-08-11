@@ -1,0 +1,337 @@
+/* Sidebar Filter Styling (Radix & OUTNET aesthetic) */
+  .favo-filter-sidebar {
+    width: 100%;
+    max-width: 270px;
+    padding: 0 24px 24px 16px;
+    box-sizing: border-box;
+    font-family: inherit;
+    color: #121212;
+  }
+
+  .favo-filter-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid #e5e5e5;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .favo-filter-clear-btn {
+    background: none;
+    border: none;
+    text-decoration: underline;
+    font-size: 12px;
+    color: #707070;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .favo-filter-clear-btn:hover {
+    color: #121212;
+  }
+
+  /* Accordion Style */
+  .favo-filter-accordion-item {
+    border-bottom: 1px solid #e5e5e5;
+    padding: 16px 0;
+  }
+
+  .favo-filter-accordion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #121212;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+  }
+
+  .favo-filter-accordion-header svg {
+    transition: transform 0.2s ease;
+  }
+
+  .favo-filter-accordion-header.active svg {
+    transform: rotate(180deg);
+  }
+
+  .favo-filter-accordion-content {
+    display: none;
+    padding-top: 12px;
+  }
+
+  .favo-filter-accordion-content.active {
+    display: block;
+  }
+
+  /* Category Search Input */
+  .favo-filter-search-wrapper {
+    position: relative;
+    margin-bottom: 12px;
+  }
+
+  .favo-filter-search-wrapper svg {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    pointer-events: none;
+  }
+
+  .favo-filter-search-input {
+    width: 100%;
+    padding: 8px 12px 8px 32px;
+    font-size: 13px;
+    border: 1px solid #d1d5db;
+    background-color: #f9fafb;
+    box-sizing: border-box;
+    outline: none;
+  }
+
+  .favo-filter-search-input:focus {
+    border-color: #121212;
+    background-color: #ffffff;
+  }
+
+  /* Checkbox Option List */
+  .favo-filter-options-list {
+    max-height: 240px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-right: 6px;
+  }
+
+  /* Custom Scrollbar for list */
+  .favo-filter-options-list::-webkit-scrollbar {
+    width: 4px;
+  }
+  .favo-filter-options-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .favo-filter-options-list::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 2px;
+  }
+
+  .favo-filter-option-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .favo-filter-checkbox {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #d1d5db;
+    cursor: pointer;
+    accent-color: #121212;
+  }
+
+  .favo-filter-option-label {
+    font-size: 13px;
+    color: #121212;
+  }
+
+  .favo-filter-option-count {
+    color: #707070;
+    font-size: 12px;
+    margin-left: 2px;
+  }
+
+  /* Price inputs */
+  .favo-filter-price-inputs {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .favo-filter-price-field {
+    display: flex;
+    align-items: center;
+    border: 1px solid #d1d5db;
+    background-color: #f9fafb;
+    padding: 8px 12px;
+    flex: 1;
+  }
+
+  .favo-filter-price-field span {
+    color: #707070;
+    font-size: 13px;
+    margin-right: 4px;
+  }
+
+  .favo-filter-price-input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: 0;
+    text-align: right;
+    font-size: 13px;
+    outline: none;
+    color: #121212;
+  }
+
+  .favo-filter-price-separator {
+    color: #707070;
+  }
+
+  .favo-filter-showmore {
+    background: none;
+    border: none;
+    color: #121212;
+    text-decoration: underline;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    padding: 4px 0 0 0;
+    margin-top: 8px;
+  }
+
+  /* Hide element helper */
+  .favo-filter-hidden {
+    display: none !important;
+  }
+
+  /* Apply button for mobile filters */
+  .favo-filter-apply-wrapper {
+    margin-top: 20px;
+    display: none;
+  }
+
+  @media (max-width: 749px) {
+    .favo-filter-sidebar {
+      max-width: 100%;
+      padding: 16px;
+    }
+  }
+
+  /* Grid/Flex sidebar layout integration */
+  .favo-collection-container-flex {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    gap: 40px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  .favo-collection-grid-right {
+    flex-grow: 1 !important;
+    width: auto !important;
+  }
+
+  .favo-filter-close-btn,
+  .favo-filter-mobile-footer,
+  .favo-filter-trigger-btn {
+    display: none !important;
+  }
+  
+  @media (max-width: 749px) {
+    .favo-collection-container-flex {
+      flex-direction: column !important;
+      gap: 20px !important;
+    }
+    .favo-filter-sidebar {
+      position: fixed !important;
+      top: 0 !important;
+      left: -100% !important;
+      width: 290px !important;
+      height: 100% !important;
+      background-color: #ffffff !important;
+      z-index: 1000000 !important;
+      box-shadow: 10px 0 30px rgba(0,0,0,0.15) !important;
+      display: flex !important;
+      flex-direction: column !important;
+      transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+      padding: 0 !important;
+      max-width: 100% !important;
+    }
+    .favo-filter-sidebar.active {
+      left: 0 !important;
+    }
+    .favo-filter-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.4);
+      z-index: 999999;
+      display: none;
+    }
+    .favo-filter-overlay.active {
+      display: block;
+    }
+    .favo-filter-accordion-container {
+      flex: 1 !important;
+      overflow-y: auto !important;
+      padding: 16px 20px !important;
+    }
+    .favo-filter-header {
+      padding: 16px 20px !important;
+      border-bottom: 1px solid #e5e5e5 !important;
+    }
+    .favo-filter-close-btn {
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      color: #121212;
+    }
+    .favo-filter-mobile-footer {
+      display: block !important;
+      padding: 16px 20px;
+      border-top: 1px solid #e5e5e5;
+      background-color: #ffffff;
+    }
+    .favo-filter-apply-btn {
+      width: 100%;
+      background-color: #121212;
+      color: #ffffff;
+      border: none;
+      padding: 12px 0;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+    }
+    .favo-filter-trigger-btn {
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid #e5e5e5;
+      background-color: #ffffff;
+      color: #121212;
+      padding: 10px 24px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 20px;
+      box-sizing: border-box;
+    }
+  }

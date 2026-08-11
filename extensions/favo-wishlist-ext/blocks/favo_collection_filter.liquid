@@ -264,12 +264,14 @@
       if (!sidebarRoot) return;
 
       // Relocate sidebar filter to be next to the product grid (aligned inside page margins)
-      let gridContainer = document.querySelector("#ProductGridContainer, .product-grid-container, .collection-grid, .collection");
-      if (gridContainer) {
-        // If the main grid container contains a page-width wrapper inside, target that instead
-        const innerPageWidth = gridContainer.querySelector(".page-width, .collection");
-        if (innerPageWidth) {
-          gridContainer = innerPageWidth;
+      let gridContainer = document.querySelector(".collection-wrapper, #ProductGridContainer .collection, #ProductGridContainer .page-width, .product-grid-container .page-width, .collection.page-width");
+      if (!gridContainer) {
+        gridContainer = document.querySelector("#ProductGridContainer, .product-grid-container, .collection-grid, .collection");
+        if (gridContainer) {
+          const innerPageWidth = gridContainer.querySelector(".page-width, .collection");
+          if (innerPageWidth) {
+            gridContainer = innerPageWidth;
+          }
         }
       }
 

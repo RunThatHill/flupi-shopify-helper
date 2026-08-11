@@ -1,4 +1,4 @@
-{% if customer == blank %}
+{% if customer == blank and request.design_mode == false %}
   <script>window.location.href = "/account/login";</script>
 {% endif %}
 

@@ -28,7 +28,7 @@
 
   /* Link item and hover animations */
   .favo-mega-nav-item {
-    position: static; /* Dropdown spans 100% width of the wrapper block */
+    position: static !important; /* Forced static so absolute children stretch to full-width wrapper */
   }
 
   .favo-mega-nav-link {
@@ -72,19 +72,20 @@
 
   /* Mega menu dropdown container (transition-based fade & slide down) */
   .favo-mega-dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    width: 100%;
-    background-color: #ffffff;
-    border-top: 1px solid #e5e5e5;
-    border-bottom: 2px solid var(--nav-text-color, #121212);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    background-color: #ffffff !important;
+    border-top: 1px solid #e5e5e5 !important;
+    border-bottom: 2px solid var(--nav-text-color, #121212) !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08) !important;
     opacity: 0;
     visibility: hidden;
     transform: translateY(10px);
     transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
-    z-index: 99;
+    z-index: 99999 !important; /* Forced layout layering on top of heroes */
     pointer-events: none; /* Ignore hover actions when hidden */
   }
 
@@ -99,10 +100,11 @@
   .favo-mega-dropdown-inner {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 30px 20px;
+    padding: 35px 20px;
     display: grid;
-    grid-template-columns: 2fr 1fr; /* 2 parts list columns, 1 part side promos */
+    grid-template-columns: 2fr 1.2fr; /* 2 parts list columns, 1.2 parts side promos */
     gap: 40px;
+    box-sizing: border-box;
   }
 
   /* Category Columns lists */
@@ -150,13 +152,14 @@
   /* Sidebar Banners (Promos) */
   .favo-mega-promos {
     display: flex;
-    gap: 20px;
+    gap: 24px;
     justify-content: flex-end;
   }
 
   .favo-mega-promo-card {
     flex: 1;
-    max-width: 160px;
+    min-width: 160px;
+    max-width: 240px;
     display: flex;
     flex-direction: column;
     text-decoration: none;
@@ -211,6 +214,7 @@
     text-transform: uppercase;
     text-align: center;
     letter-spacing: 0.5px;
+    margin-top: 4px;
   }
 
   .favo-nav-empty {

@@ -263,8 +263,12 @@
       const sidebarRoot = document.getElementById("favo-collection-filter-root");
       if (!sidebarRoot) return;
 
-      // Relocate sidebar filter to be next to the product grid
-      const gridContainer = document.querySelector("#ProductGridContainer, .product-grid-container, .collection-grid, .collection");
+      // Relocate sidebar filter to be next to the product grid (aligned inside page margins)
+      let gridContainer = document.querySelector("#ProductGridContainer .collection, #ProductGridContainer .page-width, .product-grid-container .page-width, .collection.page-width");
+      if (!gridContainer) {
+        gridContainer = document.querySelector("#ProductGridContainer, .product-grid-container, .collection-grid, .collection");
+      }
+
       if (gridContainer) {
         gridContainer.classList.add("favo-collection-container-flex");
         gridContainer.insertBefore(sidebarRoot, gridContainer.firstChild);

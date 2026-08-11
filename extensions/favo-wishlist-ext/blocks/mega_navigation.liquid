@@ -327,6 +327,35 @@
   </div>
 {% endif %}
 
+<script>
+  (function() {
+    function alignMegaMenus() {
+      const items = document.querySelectorAll(".favo-mega-nav-item");
+      items.forEach(item => {
+        const dropdown = item.querySelector(".favo-mega-dropdown");
+        if (dropdown) {
+          const itemRect = item.getBoundingClientRect();
+          // Shift the absolute dropdown left by its distance from the screen edge
+          dropdown.style.left = (-itemRect.left) + "px";
+          // Set its width to the exact viewport width
+          dropdown.style.width = window.innerWidth + "px";
+        }
+      });
+    }
+
+    // Run on hover (mouseenter) for instant recalculation
+    document.querySelectorAll(".favo-mega-nav-item").forEach(item => {
+      item.addEventListener("mouseenter", alignMegaMenus);
+    });
+
+    // Run on window resize
+    window.addEventListener("resize", alignMegaMenus);
+
+    // Initial run
+    document.addEventListener("DOMContentLoaded", alignMegaMenus);
+  })();
+</script>
+
 {% schema %}
 {
   "name": "Favo Mega Navigation",

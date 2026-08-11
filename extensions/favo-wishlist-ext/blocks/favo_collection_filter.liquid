@@ -222,6 +222,28 @@
       padding: 16px;
     }
   }
+
+  /* Grid/Flex sidebar layout integration */
+  .favo-collection-container-flex {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    gap: 40px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  .favo-collection-grid-right {
+    flex-grow: 1 !important;
+    width: auto !important;
+  }
+  
+  @media (max-width: 749px) {
+    .favo-collection-container-flex {
+      flex-direction: column !important;
+      gap: 20px !important;
+    }
+  }
 </style>
 
 <div class="favo-filter-sidebar" id="favo-collection-filter-root" data-collection-handle="{{ collection.handle }}">
@@ -240,6 +262,19 @@
     document.addEventListener("DOMContentLoaded", function() {
       const sidebarRoot = document.getElementById("favo-collection-filter-root");
       if (!sidebarRoot) return;
+
+      // Relocate sidebar filter to be next to the product grid
+      const gridContainer = document.querySelector("#ProductGridContainer, .product-grid-container, .collection-grid, .collection");
+      if (gridContainer) {
+        gridContainer.classList.add("favo-collection-container-flex");
+        gridContainer.insertBefore(sidebarRoot, gridContainer.firstChild);
+        
+        // Find the actual grid listing inside
+        const actualGrid = gridContainer.querySelector('.grid, .product-grid, ul, #product-grid');
+        if (actualGrid) {
+          actualGrid.classList.add("favo-collection-grid-right");
+        }
+      }
 
       const collectionHandle = sidebarRoot.dataset.collectionHandle;
       if (!collectionHandle) return;

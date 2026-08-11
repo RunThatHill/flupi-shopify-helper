@@ -3,30 +3,41 @@
 {% endcomment %}
 
 <style>
+  /* Force the Shopify app block wrapper to stretch full width inside flex/grid headers */
+  .shopify-block,
+  .shopify-app-block {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex-grow: 1 !important;
+    display: block !important;
+  }
+
   /* Auto-hide Shopify default header account login icon to avoid duplicates */
+  {% if block.settings.hide_default_account %}
   .header__icon--account,
   .header__icon[href*="/account"],
   a[href^="/account"]:not(.favo-utility-account-link):not(.favo-account-card):not(.favo-sidebar-link):not(.favo-account-signout) {
     display: none !important;
   }
+  {% endif %}
 
   /* Utility Bar Styles */
   .favo-utility-bar {
-    width: 100%;
+    width: 100% !important;
     background-color: {{ block.settings.background_color | default: '#f6f6f6' }};
-    border-bottom: 1px solid #e5e5e5;
+    border-bottom: 1px solid {{ block.settings.border_color | default: '#e5e5e5' }};
     font-family: inherit;
-    font-size: 11px;
+    font-size: {{ block.settings.font_size | default: 11 }}px;
     color: {{ block.settings.text_color | default: '#505050' }};
     z-index: 999;
     position: relative;
   }
 
   .favo-utility-inner {
-    max-width: 1200px;
+    max-width: {{ block.settings.max_width | default: 1200 }}px;
     margin: 0 auto;
-    padding: 0 20px;
-    height: 36px;
+    padding: 0 {{ block.settings.padding_inline | default: 20 }}px;
+    height: {{ block.settings.height | default: 36 }}px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -75,7 +86,7 @@
     padding: 0;
     margin: 0;
     font-family: inherit;
-    font-size: 11px;
+    font-size: {{ block.settings.font_size | default: 11 }}px;
     color: inherit;
     font-weight: 500;
     cursor: pointer;
@@ -115,7 +126,7 @@
     border: none;
     padding: 8px 16px;
     font-family: inherit;
-    font-size: 11px;
+    font-size: {{ block.settings.font_size | default: 11 }}px;
     color: #505050;
     cursor: pointer;
     display: flex;
@@ -313,6 +324,58 @@
       "id": "text_color",
       "label": "Text Color",
       "default": "#505050"
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "Border Bottom Color",
+      "default": "#e5e5e5"
+    },
+    {
+      "type": "range",
+      "id": "height",
+      "min": 24,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "label": "Height",
+      "default": 36
+    },
+    {
+      "type": "range",
+      "id": "font_size",
+      "min": 10,
+      "max": 16,
+      "step": 1,
+      "unit": "px",
+      "label": "Font Size",
+      "default": 11
+    },
+    {
+      "type": "range",
+      "id": "max_width",
+      "min": 800,
+      "max": 1600,
+      "step": 50,
+      "unit": "px",
+      "label": "Content Max Width",
+      "default": 1200
+    },
+    {
+      "type": "range",
+      "id": "padding_inline",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "px",
+      "label": "Horizontal Padding",
+      "default": 20
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_default_account",
+      "label": "Hide default header account icon",
+      "default": true
     }
   ]
 }

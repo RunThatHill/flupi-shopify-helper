@@ -2,8 +2,8 @@
   /* Sidebar Filter Styling (Radix & OUTNET aesthetic) */
   .favo-filter-sidebar {
     width: 100%;
-    max-width: 320px;
-    padding: 0 16px 24px 0;
+    max-width: 270px;
+    padding: 0 24px 24px 16px;
     box-sizing: border-box;
     font-family: inherit;
     color: #121212;
@@ -269,10 +269,11 @@
         gridContainer.classList.add("favo-collection-container-flex");
         gridContainer.insertBefore(sidebarRoot, gridContainer.firstChild);
         
-        // Find the actual grid listing inside
-        const actualGrid = gridContainer.querySelector('.grid, .product-grid, ul, #product-grid');
-        if (actualGrid) {
-          actualGrid.classList.add("favo-collection-grid-right");
+        // Add stretch class to all siblings of the sidebar inside the flex container
+        for (let child of gridContainer.children) {
+          if (child !== sidebarRoot) {
+            child.classList.add("favo-collection-grid-right");
+          }
         }
       }
 

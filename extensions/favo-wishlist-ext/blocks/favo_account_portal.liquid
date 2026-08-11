@@ -4,9 +4,31 @@
 
 <style>
   /* Outnet Account Portal Styles */
+  .favo-filter-hidden {
+    display: none !important;
+  }
+
+  /* Hide default theme page titles on account pages */
+  .main-page-title,
+  .page-header,
+  .template-page h1,
+  .page-title {
+    display: none !important;
+  }
+
+  /* Remove default theme page section padding to close vertical gaps */
+  .template-page .section-template--padding,
+  .template-page [class*="-padding"],
+  .main-page-title + div {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
   .favo-account-wrapper {
     max-width: 1200px;
-    margin: 40px auto;
+    margin: 10px auto 40px auto !important;
     padding: 0 20px;
     font-family: inherit;
     color: #121212;

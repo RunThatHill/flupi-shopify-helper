@@ -336,9 +336,11 @@
         if (dropdown) {
           const itemRect = item.getBoundingClientRect();
           // Shift the absolute dropdown left by its distance from the screen edge
-          dropdown.style.left = (-itemRect.left) + "px";
+          dropdown.style.setProperty("left", (-itemRect.left) + "px", "important");
           // Set its width to the exact viewport width
-          dropdown.style.width = window.innerWidth + "px";
+          dropdown.style.setProperty("width", window.innerWidth + "px", "important");
+          // Force max-width override to clear any theme restrictions
+          dropdown.style.setProperty("max-width", "none", "important");
         }
       });
     }

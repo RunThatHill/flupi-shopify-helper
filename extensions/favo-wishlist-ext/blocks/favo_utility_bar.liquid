@@ -3,9 +3,9 @@
 {% endcomment %}
 
 <style>
-  /* Force the Shopify app block wrapper to stretch full width inside flex/grid headers */
-  .shopify-block,
-  .shopify-app-block {
+  /* Force only the Utility Bar app block wrapper to stretch full width */
+  .shopify-block:has(.favo-utility-bar),
+  .shopify-app-block:has(.favo-utility-bar) {
     width: 100% !important;
     max-width: 100% !important;
     flex-grow: 1 !important;
@@ -355,11 +355,11 @@
       "type": "range",
       "id": "max_width",
       "min": 800,
-      "max": 1600,
+      "max": 2000,
       "step": 50,
       "unit": "px",
       "label": "Content Max Width",
-      "default": 1200
+      "default": 1600
     },
     {
       "type": "range",
@@ -369,7 +369,7 @@
       "step": 5,
       "unit": "px",
       "label": "Horizontal Padding",
-      "default": 20
+      "default": 40
     },
     {
       "type": "checkbox",

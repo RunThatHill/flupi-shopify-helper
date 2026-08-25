@@ -168,15 +168,43 @@
     display: none !important;
   }
 
+  .favo-desktop-only {
+    display: inline !important;
+  }
+  
+  .favo-mobile-only {
+    display: none !important;
+  }
+
   @media (max-width: 767px) {
+    .favo-desktop-only {
+      display: none !important;
+    }
+    .favo-mobile-only {
+      display: inline !important;
+    }
     .favo-utility-right {
       display: none !important;
     }
     .favo-utility-inner {
       justify-content: center !important;
-      gap: 16px;
-      height: 36px !important;
-      padding: 0 10px;
+      gap: 12px;
+      height: 32px !important;
+      padding: 0 8px;
+    }
+    .favo-utility-left {
+      gap: 10px;
+    }
+    .favo-utility-bar,
+    .favo-localization-trigger,
+    .favo-utility-account-link {
+      font-size: 10px !important;
+    }
+    .favo-localization-dropdown {
+      left: 50% !important;
+      right: auto !important;
+      transform: translateX(-50%) !important;
+      min-width: 180px !important;
     }
   }
 </style>
@@ -207,7 +235,10 @@
       <div class="favo-utility-localization">
         <button type="button" class="favo-localization-trigger" id="favo-localization-btn">
           <span id="favo-country-flag"></span>
-          <span id="favo-country-label">{{ localization.language.endonym_name }} / {{ localization.country.name }}</span>
+          <span id="favo-country-label">
+            <span class="favo-desktop-only">{{ localization.language.endonym_name }} / {{ localization.country.name }}</span>
+            <span class="favo-mobile-only">{{ localization.country.iso_code }} ({{ localization.country.currency.iso_code }})</span>
+          </span>
           <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="currentColor" viewBox="0 0 256 256" style="margin-top: 1px;">
             <path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80a8,8,0,0,1,11.32-11.32L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"></path>
           </svg>

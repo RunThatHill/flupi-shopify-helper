@@ -49,21 +49,25 @@ export async function sendWhatsAppMessage(options: SendMessageOptions) {
 
       let bodyPayload: any;
 
-      if (options.templateName) {
+      // Determine if template should be used (default to template if specified or configured, or if sending business-initiated outbound)
+      const templateName = options.templateName || process.env.WHATSAPP_TEMPLATE_NAME;
+
+      if (templateName) {
         // Template Message (Required for business-initiated chats outside 24h window)
+        console.log(`[WhatsApp Cloud API] Sending template '${templateName}' to ${targetPhone}...`);
         bodyPayload = {
           messaging_product: "whatsapp",
           recipient_type: "individual",
           to: targetPhone,
           type: "template",
           template: {
-            name: options.templateName,
+            name: templateName,
             language: { code: options.templateLanguage || "en_US" },
             ...(options.templateComponents ? { components: options.templateComponents } : {})
           }
         };
       } else {
-        // Freeform Text Message (Used inside 24h customer window or for test messages)
+        // Freeform Text Message (Used inside 24h customer window)
         bodyPayload = {
           messaging_product: "whatsapp",
           recipient_type: "individual",

@@ -52,6 +52,7 @@ export async function sendWhatsAppMessage(options: SendMessageOptions) {
       // Determine if template should be used (default to template if specified or configured, or if sending business-initiated outbound)
       const templateName = options.templateName || process.env.WHATSAPP_TEMPLATE_NAME;
 
+      if (templateName) {
         // Auto-build body parameters for {{1}}, {{2}}, {{3}} if not explicitly provided
         const defaultComponents = [
           {

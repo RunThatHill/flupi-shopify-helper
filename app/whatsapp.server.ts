@@ -52,9 +52,18 @@ export async function sendWhatsAppMessage(options: SendMessageOptions) {
       // Determine if template should be used (default to template if specified or configured, or if sending business-initiated outbound)
       const templateName = options.templateName || process.env.WHATSAPP_TEMPLATE_NAME;
 
-      if (templateName) {
-        // Template Message (Required for business-initiated chats outside 24h window)
-        console.log(`[WhatsApp Cloud API] Sending template '${templateName}' to ${targetPhone}...`);
+        // Auto-build body parameters for {{1}}, {{2}}, {{3}} if not explicitly provided
+        const defaultComponents = [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: options.customerName ? options.customerName.trim().split(/\s+/)[0] : "Customer" },
+              { type: "text", text: options.orderNumber || "Order" },
+              { type: "text", text: options.amount || "0.00" }
+            ]
+          }
+        ];
+
         bodyPayload = {
           messaging_product: "whatsapp",
           recipient_type: "individual",
@@ -63,7 +72,7 @@ export async function sendWhatsAppMessage(options: SendMessageOptions) {
           template: {
             name: templateName,
             language: { code: options.templateLanguage || "en_US" },
-            ...(options.templateComponents ? { components: options.templateComponents } : {})
+            components: options.templateComponents || (templateName !== "hello_world" ? defaultComponents : undefined)
           }
         };
       } else {

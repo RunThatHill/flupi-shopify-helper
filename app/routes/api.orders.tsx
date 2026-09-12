@@ -4,6 +4,7 @@ import db from "../db.server";
 import shopify from "../shopify.server";
 import fs from "fs/promises";
 import path from "path";
+import { sendWhatsAppMessage } from "../whatsapp.server";
 
 // CORS Headers helper
 const corsHeaders = {
@@ -204,17 +205,16 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         data: { status: "CONFIRMED" },
       });
 
-      // Notify WhatsApp bot to send success message
-      const botUrl = process.env.WHATSAPP_BOT_URL || "http://localhost:3001";
-      fetch(`${botUrl}/send-success`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: order.customerPhone,
-          orderNumber: order.orderNumber,
-        }),
+      // Send payment confirmation success message via WhatsApp
+      const successText = `Payment Verified! ✅\n\nYour payment for order ${order.orderNumber} has been verified and your order is now confirmed. Thank you for shopping with us!\n\nتم التحقق من الدفع! ✅\n\nتم التحقق من دفعتك للطلب ${order.orderNumber} وتأكيد طلبك الآن. شكراً لتسوقك معنا!`;
+
+      sendWhatsAppMessage({
+        to: order.customerPhone,
+        text: successText,
+        shopifyOrderId,
+        orderNumber: order.orderNumber,
       }).catch(err => {
-        console.error("Failed to notify WhatsApp bot of confirmation:", err.message);
+        console.error("Failed to send WhatsApp payment confirmation success:", err.message);
       });
 
       console.log(`Successfully confirmed payment for order: ${order.orderNumber}`);

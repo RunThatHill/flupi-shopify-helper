@@ -12,14 +12,15 @@ const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(cors());
 
-const PORT = process.env.WHATSAPP_BOT_PORT || 3001;
+const PORT = process.env.PORT || process.env.WHATSAPP_BOT_PORT || 3001;
 const HELPER_URL = process.env.SHOPIFY_HELPER_URL || 'http://localhost:8080';
+const AUTH_DIR = process.env.AUTH_DIR || 'auth_info_baileys';
 
 let sock = null;
 
 // Connect to WhatsApp
 async function connectToWhatsApp() {
-  const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
+  const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
   const { version, isLatest } = await fetchLatestBaileysVersion();
   console.log(`[WA-Bot] Using Baileys version v${version.join('.')}, isLatest: ${isLatest}`);
 
@@ -122,9 +123,9 @@ async function connectToWhatsApp() {
   });
 }
 
-// HTTP API: Send Instapay Payment Request
+// HTTP API: Send Order Confirmation / Payment Request
 app.post('/send-request', async (req, res) => {
-  const { shopifyOrderId, phone, name, orderNumber, amount, currency } = req.body;
+  const { shopifyOrderId, phone, name, orderNumber, amount, currency, isInstapay = true } = req.body;
   if (!phone) {
     return res.status(400).json({ error: 'Missing phone' });
   }
@@ -145,10 +146,18 @@ app.post('/send-request', async (req, res) => {
     }
 
     const firstName = name ? name.trim().split(/\s+/)[0] : 'Customer';
-    const message = `Hi ${firstName},\n\nThank you for your order ${orderNumber}! You selected Instapay checkout. Please reply to this chat with a screenshot of your payment transfer of ${amount} ${currency === 'EGP' ? 'EGP' : currency} to confirm and verify your order.\n\nشكراً على طلبك ${orderNumber}! لقد اخترت الدفع الفوري Instapay. من فضلك رد على هذه المحادثة بصورة من تحويلك لمبلغ ${amount} ${currency === 'EGP' ? 'جنيه مصري' : currency} لتأكيد والتحقق من طلبك.`;
+    const currStr = currency === 'EGP' ? 'EGP' : currency;
+    const currStrAr = currency === 'EGP' ? 'جنيه مصري' : currency;
+
+    let message = '';
+    if (isInstapay) {
+      message = `Hi ${firstName},\n\nThank you for your order ${orderNumber}! You selected Instapay checkout. Please reply to this chat with a screenshot of your payment transfer of ${amount} ${currStr} to confirm and verify your order.\n\nشكراً على طلبك ${orderNumber}! لقد اخترت الدفع الفوري Instapay. من فضلك رد على هذه المحادثة بصورة من تحويلك لمبلغ ${amount} ${currStrAr} لتأكيد والتحقق من طلبك.`;
+    } else {
+      message = `Hi ${firstName},\n\nThank you for your order ${orderNumber}! We have received your order of ${amount} ${currStr} and it is now being processed.\n\nشكراً على طلبك ${orderNumber}! لقد استلمنا طلبك بقيمة ${amount} ${currStrAr} وجاري تجهيزه الآن.`;
+    }
 
     const sentMsg = await sock.sendMessage(targetJid, { text: message });
-    console.log(`[WA-Bot] Sent payment request message to ${targetJid} for order ${orderNumber}`);
+    console.log(`[WA-Bot] Sent order message (Instapay: ${isInstapay}) to ${targetJid} for order ${orderNumber}`);
     
     const resolvedPhone = targetJid.split('@')[0];
 

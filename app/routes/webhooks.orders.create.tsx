@@ -2,6 +2,7 @@ import type { ActionFunctionArgs } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { supabase } from "../supabase.server";
+import { sendWhatsAppMessage } from "../whatsapp.server";
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   console.log("[DEBUG] Webhook request received at /webhooks/orders/create");
@@ -62,66 +63,83 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       console.log(`[DEBUG] Supabase client offline, skipped database sync for order ${orderNumber}.`);
     }
 
-    // ─── 2. INSTAPAY WHATSAPP BOT FLOW (Existing Logic) ───
+    // ─── 2. WHATSAPP NOTIFICATION FLOW ───
     const gatewayNames: string[] = payload.payment_gateway_names || [];
     const gateway: string = payload.gateway || "";
     const isInstapay = 
       gateway.toLowerCase().includes("instapay") || 
       gatewayNames.some(g => g.toLowerCase().includes("instapay"));
 
-    if (!isInstapay) {
-      console.log(`Order ${orderNumber} gateway is not Instapay (${gateway || gatewayNames.join(", ")}). Skipping WhatsApp bot.`);
-      return new Response();
-    }
-
     if (!cleanPhone) {
-      console.error(`Order ${orderNumber} has no valid phone number. Cannot register in WhatsApp queue.`);
+      console.error(`Order ${orderNumber} has no valid phone number. Cannot send WhatsApp notification.`);
       return new Response();
     }
 
-    console.log(`Registering Instapay order: ${orderNumber} for customer ${customerName} (${cleanPhone})`);
+    const firstName = customerName.trim().split(/\s+/)[0] || "Customer";
+    const currStr = currency === "EGP" ? "EGP" : currency;
+    const currStrAr = currency === "EGP" ? "جنيه مصري" : currency;
 
-    // Save to local database
-    await db.instapayOrderQueue.upsert({
-      where: { shopifyOrderId: String(payload.id) },
-      update: {
-        orderNumber,
-        customerName,
-        customerPhone: cleanPhone,
-        totalPrice,
-        currency,
-        status: "AWAITING_PROOF",
-      },
-      create: {
+    if (isInstapay) {
+      console.log(`Registering Instapay order: ${orderNumber} for customer ${customerName} (${cleanPhone})`);
+
+      // Save to local database queue
+      await db.instapayOrderQueue.upsert({
+        where: { shopifyOrderId: String(payload.id) },
+        update: {
+          orderNumber,
+          customerName,
+          customerPhone: cleanPhone,
+          totalPrice,
+          currency,
+          status: "AWAITING_PROOF",
+        },
+        create: {
+          shopifyOrderId: String(payload.id),
+          orderNumber,
+          customerName,
+          customerPhone: cleanPhone,
+          totalPrice,
+          currency,
+          status: "AWAITING_PROOF",
+        }
+      });
+
+      const instapayMsgText = `Hi ${firstName},\n\nThank you for your order ${orderNumber}! You selected Instapay checkout. Please reply to this chat with a screenshot of your payment transfer of ${totalPrice} ${currStr} to confirm and verify your order.\n\nشكراً على طلبك ${orderNumber}! لقد اخترت الدفع الفوري Instapay. من فضلك رد على هذه المحادثة بصورة من تحويلك لمبلغ ${totalPrice} ${currStrAr} لتأكيد والتحقق من طلبك.`;
+
+      console.log(`Sending Instapay payment request via WhatsApp to: ${cleanPhone}`);
+      
+      // Async non-blocking dispatch
+      sendWhatsAppMessage({
+        to: cleanPhone,
+        text: instapayMsgText,
         shopifyOrderId: String(payload.id),
         orderNumber,
         customerName,
-        customerPhone: cleanPhone,
-        totalPrice,
-        currency,
-        status: "AWAITING_PROOF",
-      }
-    });
-
-    // Notify WhatsApp bot asynchronously
-    const botUrl = process.env.WHATSAPP_BOT_URL || "http://localhost:3001";
-    console.log(`Notifying WhatsApp bot at: ${botUrl}/send-request`);
-    
-    // Non-blocking fetch so we don't delay Shopify's webhook response
-    fetch(`${botUrl}/send-request`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        shopifyOrderId: String(payload.id),
-        phone: cleanPhone,
-        name: customerName,
-        orderNumber,
         amount: totalPrice,
         currency,
-      }),
-    }).catch(err => {
-      console.error("Failed to notify WhatsApp bot:", err.message);
-    });
+        isInstapay: true,
+      }).catch(err => {
+        console.error("Failed to send WhatsApp message for Instapay order:", err.message);
+      });
+    } else {
+      console.log(`Order ${orderNumber} is standard (${gateway || gatewayNames.join(", ")}). Sending standard confirmation via WhatsApp.`);
+
+      const standardMsgText = `Hi ${firstName},\n\nThank you for your order ${orderNumber}! We have received your order of ${totalPrice} ${currStr} and it is now being processed.\n\nشكراً على طلبك ${orderNumber}! لقد استلمنا طلبك بقيمة ${totalPrice} ${currStrAr} وجاري تجهيزه الآن.`;
+
+      // Async non-blocking dispatch
+      sendWhatsAppMessage({
+        to: cleanPhone,
+        text: standardMsgText,
+        shopifyOrderId: String(payload.id),
+        orderNumber,
+        customerName,
+        amount: totalPrice,
+        currency,
+        isInstapay: false,
+      }).catch(err => {
+        console.error("Failed to send WhatsApp message for standard order:", err.message);
+      });
+    }
 
   } catch (error: any) {
     console.error("Error processing orders/create webhook:", error);

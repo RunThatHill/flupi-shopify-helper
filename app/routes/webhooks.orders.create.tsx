@@ -104,7 +104,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         }
       });
 
-      const instapayMsgText = `Hi ${firstName},\n\nThank you for your order ${orderNumber}! You selected Instapay checkout. Please reply to this chat with a screenshot of your payment transfer of ${totalPrice} ${currStr} to confirm and verify your order.\n\nشكراً على طلبك ${orderNumber}! لقد اخترت الدفع الفوري Instapay. من فضلك رد على هذه المحادثة بصورة من تحويلك لمبلغ ${totalPrice} ${currStrAr} لتأكيد والتحقق من طلبك.`;
+      const instapayLink = process.env.INSTAPAY_LINK || "https://ipn.eg/S/abdelmassehmorad/instapay/0esDlD";
+      const instapayUser = process.env.INSTAPAY_USERNAME || "abdelmassehmorad@instapay";
+
+      const instapayMsgText = `Hi ${firstName},\n\nThank you for your order ${orderNumber}! You selected Instapay checkout.\n\n💳 Amount to Transfer: ${totalPrice} ${currStr}\n👤 Instapay Account: ${instapayUser}\n🔗 Direct Payment Link: ${instapayLink}\n\nPlease click the link above or transfer to ${instapayUser}, then reply to this chat with a screenshot of your payment transfer to confirm and verify your order.\n\n---\n\nشكراً على طلبك ${orderNumber}! لقد اخترت الدفع الفوري Instapay.\n\n💳 المبلغ المطلوب تحويله: ${totalPrice} ${currStrAr}\n👤 عنوان حساب إنستاباي: ${instapayUser}\n🔗 رابط التحويل المباشر: ${instapayLink}\n\nيرجى الضغط على الرابط أعلاه أو التحويل إلى ${instapayUser}، ثم الرد على هذه المحادثة بصورة من تحويلك لتأكيد والتحقق من طلبك.`;
 
       console.log(`Sending Instapay payment request via WhatsApp to: ${cleanPhone}`);
       

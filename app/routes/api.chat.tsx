@@ -26,10 +26,17 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         });
       } catch (e) {}
 
-      const messages = await db.whatsAppMessage.findMany({
-        where: { conversationId },
-        orderBy: { createdAt: "asc" }
-      });
+      let messages: any[] = [];
+      try {
+        messages = await db.whatsAppMessage.findMany({
+          where: { conversationId },
+          orderBy: { createdAt: "asc" }
+        });
+      } catch (e: any) {
+        console.warn("whatsAppMessage query error:", e.message);
+        messages = [];
+      }
+
       return json({ messages }, { headers: corsHeaders });
     }
 
@@ -46,14 +53,20 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       ];
     }
 
-    const list = await db.whatsAppConversation.findMany({
-      where,
-      orderBy: { lastMessageAt: "desc" }
-    });
+    let list: any[] = [];
+    try {
+      list = await db.whatsAppConversation.findMany({
+        where,
+        orderBy: { lastMessageAt: "desc" }
+      });
+    } catch (e: any) {
+      console.warn("whatsAppConversation query error:", e.message);
+      list = [];
+    }
 
-    const conversations = list.map((c) => ({
+    const conversations = list.map((c: any) => ({
       ...c,
-      formattedConvId: `WA-${c.id.slice(-6).toUpperCase()}`
+      formattedConvId: c?.id ? `WA-${c.id.slice(-6).toUpperCase()}` : "WA-INBOX"
     }));
 
     return json({ conversations }, { headers: corsHeaders });
@@ -83,11 +96,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
 
     if (actionType === "update_status" && conversationId && body.status) {
-      const updated = await db.whatsAppConversation.update({
-        where: { id: conversationId },
-        data: { status: body.status }
-      });
-      return json({ success: true, conversation: updated }, { headers: corsHeaders });
+      try {
+        const updated = await db.whatsAppConversation.update({
+          where: { id: conversationId },
+          data: { status: body.status }
+        });
+        return json({ success: true, conversation: updated }, { headers: corsHeaders });
+      } catch (e: any) {
+        return json({ success: false, error: e.message }, { status: 200, headers: corsHeaders });
+      }
     }
 
     if (!customerPhone || !message) {
@@ -106,15 +123,21 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       shopifyOrderId
     });
 
-    const { message: savedMsg } = await logWhatsAppMessage({
-      customerPhone,
-      direction: "outbound",
-      senderName: sender,
-      messageType: "text",
-      body: message,
-      shopifyOrderId,
-      status: sendResult.success ? "sent" : "failed"
-    });
+    let savedMsg: any = null;
+    try {
+      const result = await logWhatsAppMessage({
+        customerPhone,
+        direction: "outbound",
+        senderName: sender,
+        messageType: "text",
+        body: message,
+        shopifyOrderId,
+        status: sendResult.success ? "sent" : "failed"
+      });
+      savedMsg = result.message;
+    } catch (e: any) {
+      console.warn("Failed to log message to DB:", e.message);
+    }
 
     return json({ success: true, message: savedMsg, sendResult }, { headers: corsHeaders });
   } catch (error: any) {

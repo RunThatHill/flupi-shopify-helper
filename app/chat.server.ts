@@ -15,10 +15,54 @@ export interface CreateMessageParams {
   status?: string;
 }
 
+let tablesEnsured = false;
+
+/**
+ * Auto-healing helper to create SQLite tables on the fly if missing in database
+ */
+export async function ensureTablesExist() {
+  if (tablesEnsured) return;
+  try {
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "WhatsAppConversation" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "customerPhone" TEXT NOT NULL UNIQUE,
+        "customerName" TEXT,
+        "lastMessage" TEXT,
+        "lastMessageAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "unreadCount" INTEGER NOT NULL DEFAULT 0,
+        "status" TEXT NOT NULL DEFAULT 'active',
+        "shopifyOrderId" TEXT,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "WhatsAppMessage" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "metaMessageId" TEXT UNIQUE,
+        "conversationId" TEXT NOT NULL,
+        "direction" TEXT NOT NULL,
+        "senderName" TEXT,
+        "messageType" TEXT NOT NULL DEFAULT 'text',
+        "body" TEXT,
+        "mediaUrl" TEXT,
+        "status" TEXT NOT NULL DEFAULT 'sent',
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "WhatsAppMessage_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "WhatsAppConversation" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      );
+    `);
+    tablesEnsured = true;
+  } catch (e: any) {
+    console.warn("Auto-creating SQLite tables warning:", e.message);
+  }
+}
+
 /**
  * Get or create a WhatsApp conversation by clean phone number
  */
 export async function getOrCreateConversation(customerPhone: string, customerName?: string, shopifyOrderId?: string) {
+  await ensureTablesExist();
   const cleanPhone = formatPhoneNumber(customerPhone);
   if (!cleanPhone) {
     throw new Error("Invalid customer phone number");
@@ -39,7 +83,6 @@ export async function getOrCreateConversation(customerPhone: string, customerNam
       }
     });
   } else if (customerName || shopifyOrderId) {
-    // Update name/order ID if provided
     conversation = await db.whatsAppConversation.update({
       where: { id: conversation.id },
       data: {
@@ -49,7 +92,6 @@ export async function getOrCreateConversation(customerPhone: string, customerNam
     });
   }
 
-  // Sync to Supabase if configured
   if (supabase) {
     try {
       await supabase.from("whatsapp_conversations").upsert({
@@ -75,6 +117,7 @@ export async function getOrCreateConversation(customerPhone: string, customerNam
  * Log a message to database & update conversation last activity
  */
 export async function logWhatsAppMessage(params: CreateMessageParams) {
+  await ensureTablesExist();
   const conversation = await getOrCreateConversation(
     params.customerPhone,
     params.customerName,
@@ -83,7 +126,6 @@ export async function logWhatsAppMessage(params: CreateMessageParams) {
 
   const excerpt = params.body || (params.messageType === "image" ? "📷 Image attached" : "Message");
 
-  // Create message in local database
   const message = await db.whatsAppMessage.create({
     data: {
       conversationId: conversation.id,
@@ -97,7 +139,6 @@ export async function logWhatsAppMessage(params: CreateMessageParams) {
     }
   });
 
-  // Update conversation last message & unread count
   const updatedConv = await db.whatsAppConversation.update({
     where: { id: conversation.id },
     data: {
@@ -107,7 +148,6 @@ export async function logWhatsAppMessage(params: CreateMessageParams) {
     }
   });
 
-  // Sync to Supabase if configured
   if (supabase) {
     try {
       await supabase.from("whatsapp_messages").upsert({
@@ -147,79 +187,103 @@ export async function logWhatsAppMessage(params: CreateMessageParams) {
  * Get all conversations sorted by latest activity, with Conversation ID search support
  */
 export async function getConversations(searchQuery?: string) {
-  const where: any = {};
-  if (searchQuery && searchQuery.trim()) {
-    const q = searchQuery.trim();
-    // Strip "WA-" or "CONV-" prefix if searching by conversation code
-    const rawCode = q.replace(/^(WA-|CONV-)/i, "");
+  await ensureTablesExist();
 
-    where.OR = [
-      { id: { contains: q } },
-      { id: { contains: rawCode } },
-      { customerPhone: { contains: q } },
-      { customerName: { contains: q } },
-      { shopifyOrderId: { contains: q } }
-    ];
-  }
+  try {
+    const where: any = {};
+    if (searchQuery && searchQuery.trim()) {
+      const q = searchQuery.trim();
+      const rawCode = q.replace(/^(WA-|CONV-)/i, "");
 
-  const list = await db.whatsAppConversation.findMany({
-    where,
-    orderBy: { lastMessageAt: "desc" },
-    include: {
-      _count: {
-        select: { messages: true }
-      }
+      where.OR = [
+        { id: { contains: q } },
+        { id: { contains: rawCode } },
+        { customerPhone: { contains: q } },
+        { customerName: { contains: q } },
+        { shopifyOrderId: { contains: q } }
+      ];
     }
-  });
 
-  return list.map((c) => ({
-    ...c,
-    formattedConvId: `WA-${c.id.slice(-6).toUpperCase()}`
-  }));
+    const list = await db.whatsAppConversation.findMany({
+      where,
+      orderBy: { lastMessageAt: "desc" },
+      include: {
+        _count: {
+          select: { messages: true }
+        }
+      }
+    });
+
+    return list.map((c) => ({
+      ...c,
+      formattedConvId: `WA-${c.id.slice(-6).toUpperCase()}`
+    }));
+  } catch (err: any) {
+    console.error("Error in getConversations, returning empty list fallback:", err.message);
+    return [];
+  }
 }
 
 /**
  * Update conversation status (e.g., 'bot', 'human_agent', 'resolved')
  */
 export async function updateConversationStatus(conversationId: string, status: string) {
-  const updated = await db.whatsAppConversation.update({
-    where: { id: conversationId },
-    data: { status }
-  });
+  await ensureTablesExist();
+  try {
+    const updated = await db.whatsAppConversation.update({
+      where: { id: conversationId },
+      data: { status }
+    });
 
-  if (supabase) {
-    try {
-      await supabase.from("whatsapp_conversations").update({ status, updated_at: new Date().toISOString() }).eq("id", conversationId);
-    } catch (e: any) {}
+    if (supabase) {
+      try {
+        await supabase.from("whatsapp_conversations").update({ status, updated_at: new Date().toISOString() }).eq("id", conversationId);
+      } catch (e: any) {}
+    }
+
+    return updated;
+  } catch (e: any) {
+    console.warn("Failed to update conversation status:", e.message);
+    return null;
   }
-
-  return updated;
 }
 
 /**
  * Get message history for a conversation
  */
 export async function getConversationMessages(conversationId: string) {
-  return db.whatsAppMessage.findMany({
-    where: { conversationId },
-    orderBy: { createdAt: "asc" }
-  });
+  await ensureTablesExist();
+  try {
+    return await db.whatsAppMessage.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: "asc" }
+    });
+  } catch (err: any) {
+    console.error("Error fetching conversation messages:", err.message);
+    return [];
+  }
 }
 
 /**
  * Mark all messages in a conversation as read
  */
 export async function markConversationAsRead(conversationId: string) {
-  const updated = await db.whatsAppConversation.update({
-    where: { id: conversationId },
-    data: { unreadCount: 0 }
-  });
+  await ensureTablesExist();
+  try {
+    const updated = await db.whatsAppConversation.update({
+      where: { id: conversationId },
+      data: { unreadCount: 0 }
+    });
 
-  if (supabase) {
-    try {
-      await supabase.from("whatsapp_conversations").update({ unread_count: 0 }).eq("id", conversationId);
-    } catch (e: any) {}
+    if (supabase) {
+      try {
+        await supabase.from("whatsapp_conversations").update({ unread_count: 0 }).eq("id", conversationId);
+      } catch (e: any) {}
+    }
+
+    return updated;
+  } catch (e: any) {
+    console.warn("Failed to mark conversation as read:", e.message);
+    return null;
   }
-
-  return updated;
 }

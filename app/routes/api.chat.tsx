@@ -25,7 +25,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     return json({ conversations }, { headers: corsHeaders });
   } catch (error: any) {
     console.error("Error in api.chat loader:", error);
-    return json({ error: error.message }, { status: 500, headers: corsHeaders });
+    return json({ conversations: [], messages: [], error: error.message }, { status: 200, headers: corsHeaders });
   }
 };
 

@@ -1,20 +1,20 @@
 import { createClient } from "@supabase/supabase-js";
-import WebSocket from "ws";
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.warn("[WARNING] Supabase URL or Service Role Key is missing from environment. Order sync will be offline.");
-}
+export let supabase: any = null;
 
-export const supabase = (supabaseUrl && supabaseServiceKey)
-  ? createClient(supabaseUrl, supabaseServiceKey, {
+if (supabaseUrl && supabaseServiceKey) {
+  try {
+    supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         persistSession: false,
-      },
-      realtime: {
-        transport: WebSocket,
       }
-    })
-  : null;
+    });
+  } catch (e: any) {
+    console.warn("[WARNING] Failed to initialize Supabase client:", e.message);
+  }
+} else {
+  console.warn("[WARNING] Supabase environment variables missing; database-only mode active.");
+}

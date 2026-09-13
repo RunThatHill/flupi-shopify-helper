@@ -4,12 +4,21 @@ declare global {
   var prismaGlobal: PrismaClient;
 }
 
-if (process.env.NODE_ENV !== "production") {
-  if (!global.prismaGlobal) {
-    global.prismaGlobal = new PrismaClient();
+function createPrismaClient() {
+  try {
+    return new PrismaClient();
+  } catch (e: any) {
+    console.error("[CRITICAL] PrismaClient failed to instantiate:", e.message);
+    return new PrismaClient();
   }
 }
 
-const prisma = global.prismaGlobal ?? new PrismaClient();
+if (process.env.NODE_ENV !== "production") {
+  if (!global.prismaGlobal) {
+    global.prismaGlobal = createPrismaClient();
+  }
+}
+
+const prisma = global.prismaGlobal ?? createPrismaClient();
 
 export default prisma;

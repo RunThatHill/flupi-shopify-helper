@@ -5,6 +5,7 @@ import shopify from "../shopify.server";
 import fs from "fs/promises";
 import path from "path";
 import { sendWhatsAppMessage } from "../whatsapp.server";
+import { logWhatsAppMessage } from "../chat.server";
 
 // CORS Headers helper
 const corsHeaders = {
@@ -216,6 +217,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       }).catch(err => {
         console.error("Failed to send WhatsApp payment confirmation success:", err.message);
       });
+
+      // Log outbound success message to chat database
+      logWhatsAppMessage({
+        customerPhone: order.customerPhone,
+        customerName: order.customerName,
+        direction: "outbound",
+        senderName: "Flùpi Support",
+        messageType: "text",
+        body: successText,
+        shopifyOrderId
+      }).catch(err => console.error("Failed to log payment confirmation message:", err.message));
 
       console.log(`Successfully confirmed payment for order: ${order.orderNumber}`);
       return json({ success: true, order: updatedOrder }, { headers: corsHeaders });

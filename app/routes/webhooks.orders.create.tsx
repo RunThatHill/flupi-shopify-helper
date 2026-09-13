@@ -3,6 +3,7 @@ import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { supabase } from "../supabase.server";
 import { sendWhatsAppMessage } from "../whatsapp.server";
+import { logWhatsAppMessage } from "../chat.server";
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   console.log("[DEBUG] Webhook request received at /webhooks/orders/create");
@@ -124,6 +125,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       }).catch(err => {
         console.error("Failed to send WhatsApp message for Instapay order:", err.message);
       });
+
+      // Log outbound message to chat database
+      logWhatsAppMessage({
+        customerPhone: cleanPhone,
+        customerName,
+        direction: "outbound",
+        senderName: "Flùpi System Bot",
+        messageType: "text",
+        body: instapayMsgText,
+        shopifyOrderId: String(payload.id)
+      }).catch(err => console.error("Failed to log Instapay message:", err.message));
     } else {
       console.log(`Order ${orderNumber} is standard (${gateway || gatewayNames.join(", ")}). Sending standard confirmation via WhatsApp.`);
 
@@ -142,6 +154,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       }).catch(err => {
         console.error("Failed to send WhatsApp message for standard order:", err.message);
       });
+
+      // Log outbound message to chat database
+      logWhatsAppMessage({
+        customerPhone: cleanPhone,
+        customerName,
+        direction: "outbound",
+        senderName: "Flùpi System Bot",
+        messageType: "text",
+        body: standardMsgText,
+        shopifyOrderId: String(payload.id)
+      }).catch(err => console.error("Failed to log standard message:", err.message));
     }
 
   } catch (error: any) {

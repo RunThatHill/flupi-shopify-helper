@@ -69,4 +69,30 @@ model InstapayOrderQueue {
   updatedAt       DateTime @updatedAt
 }
 
+model WhatsAppConversation {
+  id             String            @id @default(uuid())
+  customerPhone  String            @unique
+  customerName   String?
+  lastMessage    String?
+  lastMessageAt  DateTime          @default(now())
+  unreadCount    Int               @default(0)
+  status         String            @default("active")
+  shopifyOrderId String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  messages       WhatsAppMessage[]
+}
 
+model WhatsAppMessage {
+  id                String               @id @default(uuid())
+  metaMessageId     String?              @unique
+  conversationId    String
+  conversation      WhatsAppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  direction         String               // "inbound" | "outbound"
+  senderName        String?              // Customer name, agent name, or "System Bot"
+  messageType       String               @default("text") // "text" | "image" | "template" | "document"
+  body              String?
+  mediaUrl          String?
+  status            String               @default("sent") // "sent" | "delivered" | "read" | "failed"
+  createdAt         DateTime             @default(now())
+}

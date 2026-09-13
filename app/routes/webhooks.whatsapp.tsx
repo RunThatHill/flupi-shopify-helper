@@ -1,6 +1,7 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import db from "../db.server";
 import { downloadWhatsAppMedia, sendWhatsAppMessage, formatPhoneNumber } from "../whatsapp.server";
+import { logWhatsAppMessage } from "../chat.server";
 import fs from "fs/promises";
 import path from "path";
 
@@ -35,12 +36,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const action = async ({ request }: ActionFunctionArgs) => {
   try {
     const body = await request.json();
-    console.log(`[Meta Webhook POST] Received event payload:`, JSON.stringify(body, null, 2));
-
     const entry = body.entry?.[0];
     const change = entry?.changes?.[0];
     const value = change?.value;
     const message = value?.messages?.[0];
+    const contactName = value?.contacts?.[0]?.profile?.name || "";
 
     if (!message) {
       // Status update (sent, delivered, read) or non-message event
@@ -49,16 +49,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     const fromPhone = formatPhoneNumber(message.from || "");
     const messageType = message.type;
+    const metaMessageId = message.id;
 
     console.log(`[Meta Webhook] Incoming message type '${messageType}' from phone: ${fromPhone}`);
 
     // ── 1. HANDLE INCOMING PAYMENT PROOF SCREENSHOT ──
     if (messageType === "image") {
       const mediaId = message.image?.id;
-      if (!mediaId) {
-        console.warn(`[Meta Webhook] Image message missing media ID.`);
-        return new Response("EVENT_RECEIVED", { status: 200 });
-      }
+      const caption = message.image?.caption || "";
 
       // Look up latest order in AWAITING_PROOF status for this phone number
       const order = await db.instapayOrderQueue.findFirst({
@@ -71,30 +69,53 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         orderBy: { createdAt: "desc" }
       });
 
-      if (!order) {
-        console.warn(`[Meta Webhook] No order awaiting proof found for phone: ${fromPhone}`);
-        await sendWhatsAppMessage({
-          to: fromPhone,
-          text: "Thank you for reaching out! We could not find an active pending Instapay order for your phone number. If you need assistance, please contact our support team.\n\nشكراً لتواصلك معنا! لم نتمكن من العثور على طلب معلق لمراجعة الدفع الفوري لرقم هاتفك."
-        });
-        return new Response("EVENT_RECEIVED", { status: 200 });
+      let screenshotPath = "";
+      if (mediaId) {
+        console.log(`[Meta Webhook] Downloading proof screenshot...`);
+        const dataUri = await downloadWhatsAppMedia(mediaId);
+
+        // Save screenshot binary file locally in public/uploads/proofs/
+        const base64Data = dataUri.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64Data, "base64");
+
+        const uploadDir = path.join(process.cwd(), "public", "uploads", "proofs");
+        await fs.mkdir(uploadDir, { recursive: true });
+
+        const filename = `${order?.shopifyOrderId || Date.now()}.jpg`;
+        const filepath = path.join(uploadDir, filename);
+        await fs.writeFile(filepath, buffer);
+
+        screenshotPath = `/uploads/proofs/${filename}`;
       }
 
-      console.log(`[Meta Webhook] Downloading proof screenshot for order ${order.orderNumber}...`);
-      const dataUri = await downloadWhatsAppMedia(mediaId);
+      // Log incoming image message in conversation database
+      await logWhatsAppMessage({
+        customerPhone: fromPhone,
+        customerName: contactName || order?.customerName,
+        direction: "inbound",
+        senderName: contactName || order?.customerName || "Customer",
+        messageType: "image",
+        body: caption || "📷 Payment proof screenshot",
+        mediaUrl: screenshotPath,
+        metaMessageId,
+        shopifyOrderId: order?.shopifyOrderId
+      });
 
-      // Save screenshot binary file locally in public/uploads/proofs/
-      const base64Data = dataUri.replace(/^data:image\/\w+;base64,/, "");
-      const buffer = Buffer.from(base64Data, "base64");
+      if (!order) {
+        console.warn(`[Meta Webhook] No order awaiting proof found for phone: ${fromPhone}`);
+        const replyText = "Thank you for reaching out! We received your image. If you are uploading payment proof for an Instapay order, our team will review it shortly.\n\nشكراً لتواصلك معنا! استلمنا الصورة وسيتم مراجعتها قريباً.";
+        
+        await sendWhatsAppMessage({ to: fromPhone, text: replyText });
+        await logWhatsAppMessage({
+          customerPhone: fromPhone,
+          direction: "outbound",
+          senderName: "Flùpi System",
+          messageType: "text",
+          body: replyText
+        });
 
-      const uploadDir = path.join(process.cwd(), "public", "uploads", "proofs");
-      await fs.mkdir(uploadDir, { recursive: true });
-
-      const filename = `${order.shopifyOrderId}.jpg`;
-      const filepath = path.join(uploadDir, filename);
-      await fs.writeFile(filepath, buffer);
-
-      const screenshotPath = `/uploads/proofs/${filename}`;
+        return new Response("EVENT_RECEIVED", { status: 200 });
+      }
 
       // Update database queue status to PENDING_APPROVAL
       await db.instapayOrderQueue.update({
@@ -107,15 +128,36 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
       console.log(`[Meta Webhook] Saved screenshot for order ${order.orderNumber}. Queue updated to PENDING_APPROVAL.`);
 
+      const ackText = "Thank you! We have received your payment screenshot. Our team will verify it shortly and confirm your order. Please note that verification can take up to 2 hours.\n\nشكراً لك! لقد استلمنا لقطة شاشة الدفع الخاصة بك. سيقوم فريقنا بالتحقق منها قريباً وتأكيد طلبك. يرجى ملاحظة أن عملية التحقق قد تستغرق ما يصل إلى ساعتين.";
+
       // Send confirmation reply back to customer via WhatsApp
-      await sendWhatsAppMessage({
-        to: fromPhone,
-        text: "Thank you! We have received your payment screenshot. Our team will verify it shortly and confirm your order. Please note that verification can take up to 2 hours.\n\nشكراً لك! لقد استلمنا لقطة شاشة الدفع الخاصة بك. سيقوم فريقنا بالتحقق منها قريباً وتأكيد طلبك. يرجى ملاحظة أن عملية التحقق قد تستغرق ما يصل إلى ساعتين."
+      await sendWhatsAppMessage({ to: fromPhone, text: ackText });
+
+      // Log outbound ACK message
+      await logWhatsAppMessage({
+        customerPhone: fromPhone,
+        customerName: order.customerName,
+        direction: "outbound",
+        senderName: "Flùpi System",
+        messageType: "text",
+        body: ackText,
+        shopifyOrderId: order.shopifyOrderId
       });
+
     } else if (messageType === "text") {
-      // Polite response for standard text messages
       const bodyText = message.text?.body || "";
       console.log(`[Meta Webhook] Customer sent text: "${bodyText}"`);
+
+      // Log incoming text message
+      await logWhatsAppMessage({
+        customerPhone: fromPhone,
+        customerName: contactName,
+        direction: "inbound",
+        senderName: contactName || "Customer",
+        messageType: "text",
+        body: bodyText,
+        metaMessageId
+      });
     }
 
   } catch (error: any) {

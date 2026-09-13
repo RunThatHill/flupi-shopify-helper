@@ -10,22 +10,24 @@ const corsHeaders = {
 };
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const url = new URL(request.url);
-  const conversationId = url.searchParams.get("conversationId");
-  const search = url.searchParams.get("search") || undefined;
-
   try {
+    const url = new URL(request.url);
+    const conversationId = url.searchParams.get("conversationId");
+    const search = url.searchParams.get("search") || undefined;
+
     if (conversationId) {
-      await markConversationAsRead(conversationId);
-      const messages = await getConversationMessages(conversationId);
+      try {
+        await markConversationAsRead(conversationId);
+      } catch (e) {}
+      const messages = await getConversationMessages(conversationId).catch(() => []);
       return json({ messages }, { headers: corsHeaders });
     }
 
-    const conversations = await getConversations(search);
+    const conversations = await getConversations(search).catch(() => []);
     return json({ conversations }, { headers: corsHeaders });
   } catch (error: any) {
     console.error("Error in api.chat loader:", error);
-    return json({ conversations: [], messages: [], error: error.message }, { status: 200, headers: corsHeaders });
+    return json({ conversations: [], messages: [] }, { status: 200, headers: corsHeaders });
   }
 };
 

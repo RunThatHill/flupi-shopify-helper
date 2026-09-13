@@ -214,12 +214,7 @@ export async function getConversations(searchQuery?: string) {
 
     const list = await db.whatsAppConversation.findMany({
       where,
-      orderBy: { lastMessageAt: "desc" },
-      include: {
-        _count: {
-          select: { messages: true }
-        }
-      }
+      orderBy: { lastMessageAt: "desc" }
     });
 
     return list.map((c) => ({

@@ -18,39 +18,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     const conversationId = url.searchParams.get("conversationId");
     const search = url.searchParams.get("search") || undefined;
 
-    // Auto-create SQLite tables if missing
-    try {
-      await db.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS "WhatsAppConversation" (
-          "id" TEXT NOT NULL PRIMARY KEY,
-          "customerPhone" TEXT NOT NULL UNIQUE,
-          "customerName" TEXT,
-          "lastMessage" TEXT,
-          "lastMessageAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "unreadCount" INTEGER NOT NULL DEFAULT 0,
-          "status" TEXT NOT NULL DEFAULT 'active',
-          "shopifyOrderId" TEXT,
-          "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-      await db.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS "WhatsAppMessage" (
-          "id" TEXT NOT NULL PRIMARY KEY,
-          "metaMessageId" TEXT UNIQUE,
-          "conversationId" TEXT NOT NULL,
-          "direction" TEXT NOT NULL,
-          "senderName" TEXT,
-          "messageType" TEXT NOT NULL DEFAULT 'text',
-          "body" TEXT,
-          "mediaUrl" TEXT,
-          "status" TEXT NOT NULL DEFAULT 'sent',
-          "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          CONSTRAINT "WhatsAppMessage_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "WhatsAppConversation" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-        );
-      `);
-    } catch (e: any) {}
-
     if (conversationId) {
       try {
         await db.whatsAppConversation.update({

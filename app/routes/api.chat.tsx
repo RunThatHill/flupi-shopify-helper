@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { getConversations, getConversationMessages, markConversationAsRead, logWhatsAppMessage } from "../chat.server";
+import { getConversations, getConversationMessages, markConversationAsRead, logWhatsAppMessage, updateConversationStatus } from "../chat.server";
 import { sendWhatsAppMessage } from "../whatsapp.server";
 
 const corsHeaders = {
@@ -10,6 +10,10 @@ const corsHeaders = {
 };
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 200, headers: corsHeaders });
+  }
+
   try {
     const url = new URL(request.url);
     const conversationId = url.searchParams.get("conversationId");
@@ -46,7 +50,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
 
     if (actionType === "update_status" && conversationId && body.status) {
-      const { updateConversationStatus } = await import("../chat.server");
       const updated = await updateConversationStatus(conversationId, body.status);
       return json({ success: true, conversation: updated }, { headers: corsHeaders });
     }
@@ -55,24 +58,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return json({ error: "Missing customerPhone or message" }, { status: 400, headers: corsHeaders });
     }
 
-    // Format text with agent prefix if configured
     const sender = agentName ? agentName.trim() : "Flùpi Support";
     const formattedText = `${sender}: ${message}`;
 
-    console.log(`[CRM Inbox] Sending agent reply from '${sender}' to phone ${customerPhone}...`);
-
-    // 1. Send message via Meta WhatsApp Cloud API / Baileys
     const sendResult = await sendWhatsAppMessage({
       to: customerPhone,
       text: formattedText,
       shopifyOrderId
     });
 
-    if (!sendResult.success) {
-      console.warn(`[CRM Inbox] Failed to dispatch message via WhatsApp API: ${sendResult.error}`);
-    }
-
-    // 2. Log outbound message to database
     const { message: savedMsg } = await logWhatsAppMessage({
       customerPhone,
       direction: "outbound",

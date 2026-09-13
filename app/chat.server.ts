@@ -1,6 +1,14 @@
 import db from "./db.server";
-import { formatPhoneNumber } from "./whatsapp.server";
 import { supabase } from "./supabase.server";
+
+export function formatPhoneNumber(phone: string): string {
+  if (!phone) return "";
+  let cleaned = phone.replace(/\D/g, "");
+  if (cleaned.startsWith("01") && cleaned.length === 11) {
+    cleaned = "2" + cleaned;
+  }
+  return cleaned;
+}
 
 export interface CreateMessageParams {
   customerPhone: string;

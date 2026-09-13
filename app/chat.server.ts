@@ -1,5 +1,6 @@
 import db from "./db.server";
 import { formatPhoneNumber } from "./whatsapp.server";
+import { supabase } from "./supabase.server";
 
 export interface CreateMessageParams {
   customerPhone: string;
@@ -48,6 +49,25 @@ export async function getOrCreateConversation(customerPhone: string, customerNam
     });
   }
 
+  // Sync to Supabase if configured
+  if (supabase) {
+    try {
+      await supabase.from("whatsapp_conversations").upsert({
+        id: conversation.id,
+        customer_phone: cleanPhone,
+        customer_name: conversation.customerName,
+        last_message: conversation.lastMessage,
+        last_message_at: conversation.lastMessageAt ? conversation.lastMessageAt.toISOString() : new Date().toISOString(),
+        unread_count: conversation.unreadCount,
+        status: conversation.status,
+        shopify_order_id: conversation.shopifyOrderId,
+        updated_at: new Date().toISOString()
+      });
+    } catch (e: any) {
+      console.warn("Supabase conversation sync warning:", e.message);
+    }
+  }
+
   return conversation;
 }
 
@@ -63,7 +83,7 @@ export async function logWhatsAppMessage(params: CreateMessageParams) {
 
   const excerpt = params.body || (params.messageType === "image" ? "📷 Image attached" : "Message");
 
-  // Create message
+  // Create message in local database
   const message = await db.whatsAppMessage.create({
     data: {
       conversationId: conversation.id,
@@ -78,7 +98,7 @@ export async function logWhatsAppMessage(params: CreateMessageParams) {
   });
 
   // Update conversation last message & unread count
-  await db.whatsAppConversation.update({
+  const updatedConv = await db.whatsAppConversation.update({
     where: { id: conversation.id },
     data: {
       lastMessage: excerpt,
@@ -87,23 +107,62 @@ export async function logWhatsAppMessage(params: CreateMessageParams) {
     }
   });
 
-  return { conversation, message };
+  // Sync to Supabase if configured
+  if (supabase) {
+    try {
+      await supabase.from("whatsapp_messages").upsert({
+        id: message.id,
+        meta_message_id: message.metaMessageId,
+        conversation_id: conversation.id,
+        customer_phone: params.customerPhone,
+        direction: message.direction,
+        sender_name: message.senderName,
+        message_type: message.messageType,
+        body: message.body,
+        media_url: message.mediaUrl,
+        status: message.status,
+        created_at: message.createdAt.toISOString()
+      });
+
+      await supabase.from("whatsapp_conversations").upsert({
+        id: updatedConv.id,
+        customer_phone: updatedConv.customerPhone,
+        customer_name: updatedConv.customerName,
+        last_message: excerpt,
+        last_message_at: updatedConv.lastMessageAt.toISOString(),
+        unread_count: updatedConv.unreadCount,
+        status: updatedConv.status,
+        shopify_order_id: updatedConv.shopifyOrderId,
+        updated_at: new Date().toISOString()
+      });
+    } catch (e: any) {
+      console.warn("Supabase message sync warning:", e.message);
+    }
+  }
+
+  return { conversation: updatedConv, message };
 }
 
 /**
- * Get all conversations sorted by latest activity
+ * Get all conversations sorted by latest activity, with Conversation ID search support
  */
 export async function getConversations(searchQuery?: string) {
   const where: any = {};
-  if (searchQuery) {
+  if (searchQuery && searchQuery.trim()) {
+    const q = searchQuery.trim();
+    // Strip "WA-" or "CONV-" prefix if searching by conversation code
+    const rawCode = q.replace(/^(WA-|CONV-)/i, "");
+
     where.OR = [
-      { customerPhone: { contains: searchQuery } },
-      { customerName: { contains: searchQuery } },
-      { shopifyOrderId: { contains: searchQuery } }
+      { id: { contains: q } },
+      { id: { contains: rawCode } },
+      { customerPhone: { contains: q } },
+      { customerName: { contains: q } },
+      { shopifyOrderId: { contains: q } }
     ];
   }
 
-  return db.whatsAppConversation.findMany({
+  const list = await db.whatsAppConversation.findMany({
     where,
     orderBy: { lastMessageAt: "desc" },
     include: {
@@ -112,6 +171,29 @@ export async function getConversations(searchQuery?: string) {
       }
     }
   });
+
+  return list.map((c) => ({
+    ...c,
+    formattedConvId: `WA-${c.id.slice(-6).toUpperCase()}`
+  }));
+}
+
+/**
+ * Update conversation status (e.g., 'bot', 'human_agent', 'resolved')
+ */
+export async function updateConversationStatus(conversationId: string, status: string) {
+  const updated = await db.whatsAppConversation.update({
+    where: { id: conversationId },
+    data: { status }
+  });
+
+  if (supabase) {
+    try {
+      await supabase.from("whatsapp_conversations").update({ status, updated_at: new Date().toISOString() }).eq("id", conversationId);
+    } catch (e: any) {}
+  }
+
+  return updated;
 }
 
 /**
@@ -128,8 +210,16 @@ export async function getConversationMessages(conversationId: string) {
  * Mark all messages in a conversation as read
  */
 export async function markConversationAsRead(conversationId: string) {
-  await db.whatsAppConversation.update({
+  const updated = await db.whatsAppConversation.update({
     where: { id: conversationId },
     data: { unreadCount: 0 }
   });
+
+  if (supabase) {
+    try {
+      await supabase.from("whatsapp_conversations").update({ unread_count: 0 }).eq("id", conversationId);
+    } catch (e: any) {}
+  }
+
+  return updated;
 }

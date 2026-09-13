@@ -493,8 +493,10 @@
 /* Grid Card Heart Overlay Buttons */
 .favo-card-heart-btn {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: var(--favo-card-heart-top, 12px);
+  right: var(--favo-card-heart-right, 12px);
+  bottom: var(--favo-card-heart-bottom, auto);
+  left: var(--favo-card-heart-left, auto);
   background: #ffffff;
   border: none;
   border-radius: 50%;

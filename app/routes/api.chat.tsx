@@ -43,6 +43,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return json({ success: true }, { headers: corsHeaders });
     }
 
+    if (actionType === "update_status" && conversationId && body.status) {
+      const { updateConversationStatus } = await import("../chat.server");
+      const updated = await updateConversationStatus(conversationId, body.status);
+      return json({ success: true, conversation: updated }, { headers: corsHeaders });
+    }
+
     if (!customerPhone || !message) {
       return json({ error: "Missing customerPhone or message" }, { status: 400, headers: corsHeaders });
     }

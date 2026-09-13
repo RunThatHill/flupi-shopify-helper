@@ -146,10 +146,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     } else if (messageType === "text") {
       const bodyText = message.text?.body || "";
+      const lowerText = bodyText.toLowerCase().trim();
       console.log(`[Meta Webhook] Customer sent text: "${bodyText}"`);
 
-      // Log incoming text message
-      await logWhatsAppMessage({
+      // 1. Log incoming text message
+      const { conversation } = await logWhatsAppMessage({
         customerPhone: fromPhone,
         customerName: contactName,
         direction: "inbound",
@@ -157,6 +158,79 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         messageType: "text",
         body: bodyText,
         metaMessageId
+      });
+
+      // 2. Check for Human Agent Handoff request
+      const isHumanRequest = /agent|human|support|مواظف|مواظفين|خدمة العملاء|انسان|تحدث|مساعدة|help|3/i.test(lowerText);
+
+      if (isHumanRequest) {
+        const { updateConversationStatus } = await import("../chat.server");
+        await updateConversationStatus(conversation.id, "human_agent");
+
+        const handoffReply = "⚡ Connecting you to a live support agent! A representative has been notified in our CRM inbox and will respond shortly.\n\nتم تحويل محادثتك لممثل خدمة العملاء. تم إبلاغ فريقنا وسيقوم أحد الموظفين بالرد عليك قريباً!";
+        await sendWhatsAppMessage({ to: fromPhone, text: handoffReply });
+        await logWhatsAppMessage({
+          customerPhone: fromPhone,
+          customerName: contactName,
+          direction: "outbound",
+          senderName: "Flùpi Assistant",
+          messageType: "text",
+          body: handoffReply
+        });
+        return new Response("EVENT_RECEIVED", { status: 200 });
+      }
+
+      // 3. Check for Order Status Inquiry ("Where is my order?")
+      const isOrderStatusInquiry = /order|where|status|مكاني|فين|الطلب|طلب|تتبع|شحن|track|1/i.test(lowerText);
+
+      if (isOrderStatusInquiry) {
+        // Query Instapay queue order
+        const order = await db.instapayOrderQueue.findFirst({
+          where: {
+            customerPhone: { contains: fromPhone.slice(-10) }
+          },
+          orderBy: { createdAt: "desc" }
+        });
+
+        let statusText = "";
+        if (order) {
+          const readableStatus =
+            order.status === "AWAITING_PROOF"
+              ? "⏳ Awaiting Instapay Payment Proof"
+              : order.status === "PENDING_APPROVAL"
+              ? "🔍 Payment Proof Uploaded — Under Staff Verification"
+              : order.status === "CONFIRMED"
+              ? "✅ Order Paid & Confirmed for Delivery"
+              : order.status;
+
+          statusText = `📦 Order Status for ${order.orderNumber}:\n• Total: ${order.totalPrice} ${order.currency}\n• Status: ${readableStatus}\n\nNeed more assistance? Reply 'agent' at any time to talk to a human support representative.\n\nحالة الطلب ${order.orderNumber}:\n• إجمالي المبلغ: ${order.totalPrice} EGP\n• الحالة الحالية: ${readableStatus}\n\nللتحدث مع ممثل خدمة العملاء، ارسل كلمة 'مواظف'.`;
+        } else {
+          statusText = `Hello! We couldn't locate a recent pending order associated with (+${fromPhone}).\n\nIf you have a general question or want to inquire about a specific order, reply 'agent' to connect with a live support agent!\n\nأهلاً بك! لم نجد طلب حالي مرتبط بهذا الرقم.\nللتحدث مع الموظف مباشرةً، ارسل كلمة 'مواظف'.`;
+        }
+
+        await sendWhatsAppMessage({ to: fromPhone, text: statusText });
+        await logWhatsAppMessage({
+          customerPhone: fromPhone,
+          customerName: contactName,
+          direction: "outbound",
+          senderName: "Flùpi Assistant",
+          messageType: "text",
+          body: statusText
+        });
+        return new Response("EVENT_RECEIVED", { status: 200 });
+      }
+
+      // 4. Default Interactive Welcome Menu for general greetings
+      const greetingReply = "Welcome to Flùpi Support! 🛍️\nHow can we help you today?\n\n1️⃣ Reply '1' or 'order' for Live Order Status & Tracking\n2️⃣ Send a photo to upload Instapay payment screenshot\n3️⃣ Reply 'agent' to talk directly with a real human agent.\n\nأهلاً بك في خدمة عملاء Flùpi!\n1️⃣ اكتب '1' لمعرفة حالة الطلب والتتبع\n2️⃣ ارسل صورة التحويل لتأكيد دفع إنستا باي\n3️⃣ اكتب 'مواظف' للتحدث مباشرة مع الدعم الفني.";
+
+      await sendWhatsAppMessage({ to: fromPhone, text: greetingReply });
+      await logWhatsAppMessage({
+        customerPhone: fromPhone,
+        customerName: contactName,
+        direction: "outbound",
+        senderName: "Flùpi Assistant",
+        messageType: "text",
+        body: greetingReply
       });
     }
 

@@ -3,12 +3,92 @@
   Loads Javascript and CSS globally to inject card heart buttons and header badges.
 {% endcomment %}
 
+{%- assign show_card_hearts = block.settings.show_card_hearts | default: true -%}
+{%- assign position = block.settings.card_heart_position | default: 'top-right' -%}
+{%- assign offset_x = block.settings.card_heart_offset_x | default: 12 -%}
+{%- assign offset_y = block.settings.card_heart_offset_y | default: 12 -%}
+
+<style>
+  :root {
+    {%- if position == 'top-right' -%}
+      --favo-card-heart-top: {{ offset_y }}px;
+      --favo-card-heart-right: {{ offset_x }}px;
+      --favo-card-heart-bottom: auto;
+      --favo-card-heart-left: auto;
+    {%- elsif position == 'top-left' -%}
+      --favo-card-heart-top: {{ offset_y }}px;
+      --favo-card-heart-right: auto;
+      --favo-card-heart-bottom: auto;
+      --favo-card-heart-left: {{ offset_x }}px;
+    {%- elsif position == 'bottom-right' -%}
+      --favo-card-heart-top: auto;
+      --favo-card-heart-right: {{ offset_x }}px;
+      --favo-card-heart-bottom: {{ offset_y }}px;
+      --favo-card-heart-left: auto;
+    {%- elsif position == 'bottom-left' -%}
+      --favo-card-heart-top: auto;
+      --favo-card-heart-right: auto;
+      --favo-card-heart-bottom: {{ offset_y }}px;
+      --favo-card-heart-left: {{ offset_x }}px;
+    {%- endif -%}
+  }
+  
+  {%- unless show_card_hearts -%}
+  .favo-card-heart-btn {
+    display: none !important;
+  }
+  {%- endunless -%}
+</style>
+
 {% schema %}
 {
   "name": "Favo Wishlist Embed",
   "target": "head",
   "stylesheet": "wishlist.css",
   "javascript": "wishlist.js",
-  "settings": []
+  "settings": [
+    {
+      "type": "header",
+      "content": "Product Card Heart Button Settings"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_card_hearts",
+      "label": "Show Heart Button on Product Cards",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "card_heart_position",
+      "label": "Heart Button Position",
+      "options": [
+        { "value": "top-right", "label": "Top Right" },
+        { "value": "top-left", "label": "Top Left" },
+        { "value": "bottom-right", "label": "Bottom Right" },
+        { "value": "bottom-left", "label": "Bottom Left" }
+      ],
+      "default": "top-right"
+    },
+    {
+      "type": "range",
+      "id": "card_heart_offset_x",
+      "label": "Horizontal Offset (px)",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "range",
+      "id": "card_heart_offset_y",
+      "label": "Vertical Offset (px)",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 12
+    }
+  ]
 }
 {% endschema %}

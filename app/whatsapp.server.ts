@@ -49,8 +49,8 @@ export async function sendWhatsAppMessage(options: SendMessageOptions) {
 
       let bodyPayload: any;
 
-      // Determine if template should be used (default to template if specified or configured, or if sending business-initiated outbound)
-      const templateName = options.templateName || process.env.WHATSAPP_TEMPLATE_NAME;
+      // Only use template if explicitly specified in options
+      const templateName = options.templateName;
 
       if (templateName) {
         // Auto-build body parameters for {{1}}, {{2}}, {{3}} if not explicitly provided
@@ -65,6 +65,8 @@ export async function sendWhatsAppMessage(options: SendMessageOptions) {
           }
         ];
 
+        const targetLang = options.templateLanguage || "en";
+
         bodyPayload = {
           messaging_product: "whatsapp",
           recipient_type: "individual",
@@ -72,7 +74,7 @@ export async function sendWhatsAppMessage(options: SendMessageOptions) {
           type: "template",
           template: {
             name: templateName,
-            language: { code: options.templateLanguage || "en_US" },
+            language: { code: targetLang },
             components: options.templateComponents || (templateName !== "hello_world" ? defaultComponents : undefined)
           }
         };
@@ -90,6 +92,9 @@ export async function sendWhatsAppMessage(options: SendMessageOptions) {
         };
       }
 
+      console.log(`[WhatsApp Cloud API] Endpoint: ${metaEndpoint}`);
+      console.log(`[WhatsApp Cloud API] Payload: ${JSON.stringify(bodyPayload)}`);
+
       const response = await fetch(metaEndpoint, {
         method: "POST",
         headers: {
@@ -105,19 +110,36 @@ export async function sendWhatsAppMessage(options: SendMessageOptions) {
         console.log(`[WhatsApp Cloud API] Success! Message ID: ${resJson.messages?.[0]?.id}`);
         return { success: true, provider: "cloud_api", metaResponse: resJson };
       } else {
+        const errorMsg = resJson.error?.message || `Meta API Error (${response.status})`;
         console.warn(`[WhatsApp Cloud API] Error from Meta API (${response.status}):`, JSON.stringify(resJson));
-        
-        // If template error or outside 24h window error, attempt fallback to template or bot
-        if (resJson.error?.code === 131047 && !options.templateName) {
-          console.log(`[WhatsApp Cloud API] Customer window closed. Retrying with default 'hello_world' template...`);
+
+        // 132001: Template name does not exist in translation (language mismatch en vs en_US)
+        if (resJson.error?.code === 132001 && options.templateName) {
+          const currentLang = options.templateLanguage || "en";
+          const altLang = currentLang === "en_US" ? "en" : "en_US";
+          console.log(`[WhatsApp Cloud API] Template '${options.templateName}' missing in '${currentLang}'. Retrying with language '${altLang}'...`);
           return sendWhatsAppMessage({
             ...options,
-            templateName: "hello_world"
+            templateLanguage: altLang
           });
         }
+
+        // 131047: 24-hour customer session window closed
+        if (resJson.error?.code === 131047 && !options.templateName) {
+          const fallbackTemplate = options.isInstapay ? "instapay_payment_request" : "hello_world";
+          console.log(`[WhatsApp Cloud API] Customer 24h window closed. Retrying with '${fallbackTemplate}' template...`);
+          return sendWhatsAppMessage({
+            ...options,
+            templateName: fallbackTemplate,
+            templateLanguage: "en"
+          });
+        }
+
+        return { success: false, error: errorMsg, metaResponse: resJson };
       }
     } catch (err: any) {
       console.error(`[WhatsApp Cloud API] Request failed: ${err.message}`);
+      return { success: false, error: err.message };
     }
   }
 

@@ -123,6 +123,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       shopifyOrderId
     });
 
+    if (!sendResult.success) {
+      console.warn(`[CRM Inbox] Failed to dispatch WhatsApp message via Cloud API: ${sendResult.error}`);
+      return json({
+        success: false,
+        error: sendResult.error || "Meta Cloud API delivery failed",
+        sendResult
+      }, { status: 400, headers: corsHeaders });
+    }
+
     let savedMsg: any = null;
     try {
       const result = await logWhatsAppMessage({
@@ -132,7 +141,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         messageType: "text",
         body: message,
         shopifyOrderId,
-        status: sendResult.success ? "sent" : "failed"
+        status: "sent"
       });
       savedMsg = result.message;
     } catch (e: any) {

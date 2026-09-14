@@ -112,15 +112,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
       console.log(`Sending Instapay payment request via WhatsApp to: ${cleanPhone}`);
       
-      // Async non-blocking dispatch
+      // Async non-blocking dispatch via Meta Template
       sendWhatsAppMessage({
         to: cleanPhone,
         text: instapayMsgText,
+        templateName: "instapay_payment_request",
+        templateLanguage: "en",
         shopifyOrderId: String(payload.id),
         orderNumber,
         customerName,
         amount: totalPrice,
-        currency,
+        currency: currStr,
         isInstapay: true,
       }).catch(err => {
         console.error("Failed to send WhatsApp message for Instapay order:", err.message);

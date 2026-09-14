@@ -60,7 +60,7 @@ export async function sendWhatsAppMessage(options: SendMessageOptions) {
             parameters: [
               { type: "text", text: options.customerName ? options.customerName.trim().split(/\s+/)[0] : "Customer" },
               { type: "text", text: options.orderNumber || "Order" },
-              { type: "text", text: options.amount || "0.00" }
+              { type: "text", text: options.amount ? `${options.amount} ${options.currency || "EGP"}` : "0.00 EGP" }
             ]
           }
         ];
